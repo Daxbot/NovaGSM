@@ -230,7 +230,10 @@ namespace GSM
                             // AT+CLTS=1 - enable local timestamps
                             // AT+CFUN=1,1 - reset phone module
                             command = buffer_front(buffer);
-                            command->size = sprintf((char*)command->data, "AT&F0E0;+CLTS=1;+CFUN=1,1\r\n");
+                            command->size = sprintf(
+                                (char*)command->data,
+                                "AT&F0E0;+CLTS=1;+CFUN=1,1\r\n");
+
                             command->timeout = 10000000; // 10 seconds
                             command->handler = State::init;
                             buffer_push(buffer);
@@ -315,8 +318,8 @@ namespace GSM
 
                             if(strstr((char *)buffer->pending->data, "+CSQ:") != nullptr)
                             {
-                                char *str = strchr((char *)buffer->pending->data, ':');
-                                modem->signal = strtoul(str+2, nullptr, 0);
+                                char *pch = strchr((char *)buffer->pending->data, ':');
+                                modem->signal = strtoul(pch+2, nullptr, 0);
                                 if(modem->signal != 99)
                                 {
                                     if(modem->state != State::online)
@@ -426,8 +429,8 @@ namespace GSM
 
                             if(strstr((char *)buffer->pending->data, "+CSQ:"))
                             {
-                                char *str = strchr((char *)buffer->pending->data, ':');
-                                modem->signal = strtoul(str+2, nullptr, 0);
+                                char *pch = strchr((char *)buffer->pending->data, ':');
+                                modem->signal = strtoul(pch+2, nullptr, 0);
                                 if(modem->signal == 99)
                                 {
                                     ctx->debug("Modem offline.\r\n", 16);
@@ -437,8 +440,8 @@ namespace GSM
                             }
                             else if(strstr((char *)buffer->pending->data, "+CGATT:"))
                             {
-                                char *str = strchr((char *)buffer->pending->data, ':');
-                                if(*(str+2) == '0')
+                                char *pch = strchr((char *)buffer->pending->data, ':');
+                                if(*(pch+2) == '0')
                                 {
                                     ctx->debug("Disconnected from GPRS.\r\n", 25);
                                     modem->state = State::online;
@@ -537,14 +540,18 @@ namespace GSM
 
                             if(strstr((char *)buffer->pending->data, "+CIPRXGET: 4"))
                             {
-                                char *str = strchr((char *)buffer->pending->data, ',');
-                                uint16_t size = strtoul(str+1, nullptr, 0);
+                                char *pch = strchr((char *)buffer->pending->data, ',');
+                                uint16_t size = strtoul(pch+1, nullptr, 0);
 
                                 if(size)
                                 {
                                     // Handle immediately:
                                     // AT+CIPRXGET=2,[size] - read 'size' bytes from the socket
-                                    buffer->pending->size = snprintf((char*)buffer->pending->data, BUFFER_SIZE, "AT+CIPRXGET=2,%u\r\n", size);
+                                    buffer->pending->size = snprintf(
+                                        (char*)buffer->pending->data,
+                                        BUFFER_SIZE,
+                                        "AT+CIPRXGET=2,%u\r\n",
+                                        size);
 
                                     ctx->uart_clear();
                                     ctx->uart_write(
@@ -557,8 +564,8 @@ namespace GSM
                             }
                             else if(strstr((char *)buffer->pending->data, "+CSQ:"))
                             {
-                                char *str = strchr((char *)buffer->pending->data, ':');
-                                modem->signal = strtoul(str+2, nullptr, 0);
+                                char *pch = strchr((char *)buffer->pending->data, ':');
+                                modem->signal = strtoul(pch+2, nullptr, 0);
                                 if(modem->signal == 99)
                                 {
                                     ctx->debug("Modem offline.\r\n", 16);
@@ -616,15 +623,15 @@ namespace GSM
                     {
                         buffer->pending->data[buffer->pending->size] = '\0';
 
-                        char *str = strchr((char *)buffer->pending->data, ':');
-                        if(str != nullptr)
+                        char *pch = strchr((char *)buffer->pending->data, ':');
+                        if(pch != nullptr)
                         {
-                            uint16_t size = strtoul(str+4, nullptr, 0);
-                            str = strchr(str, '\n');
+                            uint16_t size = strtoul(pch+4, nullptr, 0);
+                            pch = strchr(pch, '\n');
 
                             for(uint16_t i=1; i <= size; ++i)
                             {
-                                modem->rx_data[modem->rx_head] = str[i];
+                                modem->rx_data[modem->rx_head] = pch[i];
                                 if(++modem->rx_head >= BUFFER_SIZE)
                                     modem->rx_head = 0U;
                             }
@@ -732,7 +739,11 @@ namespace GSM
         // AT+CGATT - detach from GPRS service
         // AT+SAPBR=3,1,[tag],[value] - configure bearer settings
         command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "AT+CIPSHUT;+CGATT=0;+SAPBR=3,1,\"Contype\",\"GPRS\";+SAPBR=3,1,\"APN\",\"%s\"\r\n", apn);
+        command->size = sprintf(
+            (char*)command->data,
+            "AT+CIPSHUT;+CGATT=0;+SAPBR=3,1,\"Contype\",\"GPRS\";+SAPBR=3,1,\"APN\",\"%s\"\r\n",
+            apn);
+
         command->timeout = 65000000; // 65 seconds
         buffer_push(&modem->cmd_buffer);
 
@@ -740,21 +751,34 @@ namespace GSM
         {
             // AT+SAPBR=3,1,[tag],[value] - configure bearer settings
             command = buffer_front(&modem->cmd_buffer);
-            command->size = snprintf((char*)command->data, BUFFER_SIZE, "AT+SAPBR=3,1,\"USER\",\"%s\";AT+SAPBR=3,1,\"PWD\",\"%s\"\r\n", user, pwd);
+            command->size = snprintf(
+                (char*)command->data,
+                BUFFER_SIZE,
+                "AT+SAPBR=3,1,\"USER\",\"%s\";AT+SAPBR=3,1,\"PWD\",\"%s\"\r\n",
+                user, pwd);
+
             buffer_push(&modem->cmd_buffer);
         }
 
         // AT+CGDCONT=1,[type],[apn] - define GPRS PDP context
         // AT+CGACT=1,1 - activate GPRS PDP context
         command = buffer_front(&modem->cmd_buffer);
-        command->size = snprintf((char*)command->data, BUFFER_SIZE, "AT+CGDCONT=1,\"IP\",\"%s\";+CGACT=1,1\r\n", apn);
+        command->size = snprintf(
+            (char*)command->data,
+            BUFFER_SIZE,
+            "AT+CGDCONT=1,\"IP\",\"%s\";+CGACT=1,1\r\n",
+            apn);
+
         command->handler = State::authenticating;
         command->timeout = 150000000; // 150 second
         buffer_push(&modem->cmd_buffer);
 
         // AT+SAPBR=1,1 - open bearer
         command = buffer_front(&modem->cmd_buffer);
-        command->size = snprintf((char*)command->data, BUFFER_SIZE, "AT+SAPBR=1,1\r\n");
+        command->size = sprintf(
+            (char*)command->data,
+            "AT+SAPBR=1,1\r\n");
+
         command->handler = State::authenticating;
         command->timeout = 850000000; // 85 seconds
         buffer_push(&modem->cmd_buffer);
@@ -765,14 +789,22 @@ namespace GSM
         // AT+CIPRXGET=1 - manual data mode
         // AT+CSTT=[apn],[user],[password] - set apn/user/password for GPRS PDP context
         command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "AT+CGATT=1;+CIPMUX=0;+CIPQSEND=1;+CIPRXGET=1;+CSTT=\"%s\",\"%s\",\"%s\"\r\n", apn, user, pwd);
+        command->size = snprintf(
+            (char*)command->data,
+            BUFFER_SIZE,
+            "AT+CGATT=1;+CIPMUX=0;+CIPQSEND=1;+CIPRXGET=1;+CSTT=\"%s\",\"%s\",\"%s\"\r\n",
+            apn, user, pwd);
+
         command->timeout = 75000000; // 75 seconds
         command->handler = State::authenticating;
         buffer_push(&modem->cmd_buffer);
 
         // AT+CIICR - bring up wireless connection
         command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "AT+CIICR\r\n");
+        command->size = sprintf(
+            (char*)command->data,
+            "AT+CIICR\r\n");
+
         command->timeout = 60000000; // 60 seconds
         command->handler = State::authenticating;
         buffer_push(&modem->cmd_buffer);
@@ -780,7 +812,10 @@ namespace GSM
         // AT+CIFSR - get local IP address
         // AT+CDNSCFG=[primary],[secondary] - configure DNS
         command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "AT+CIFSR;+CDNSCFG=\"8.8.8.8\",\"8.8.4.4\"\r\n");
+        command->size = sprintf(
+            (char*)command->data,
+            "AT+CIFSR;+CDNSCFG=\"8.8.8.8\",\"8.8.4.4\"\r\n");
+
         command->timeout = 10000000; // 10 seconds
         command->handler = State::authenticating;
         buffer_push(&modem->cmd_buffer);
@@ -868,7 +903,12 @@ namespace GSM
 
         // AT+CIPSTART=[type],[ip],[port] - start TCP/UDP connection to 'ip':'port'
         command_t *command = buffer_front(&modem->cmd_buffer);
-        command->size = snprintf((char*)command->data, BUFFER_SIZE, "AT+CIPSTART=\"TCP\",\"%s\",%u\r\n", host, port);
+        command->size = snprintf(
+            (char*)command->data,
+            BUFFER_SIZE,
+            "AT+CIPSTART=\"TCP\",\"%s\",%u\r\n",
+            host, port);
+
         command->timeout = 75000000; // 75 seconds
         command->handler = State::handshaking;
         buffer_push(&modem->cmd_buffer);
