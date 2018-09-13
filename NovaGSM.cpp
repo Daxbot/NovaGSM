@@ -564,7 +564,8 @@ namespace GSM
                                 }
                                 buffer_pop(buffer);
                             }
-                            else if(strstr((char *)command->data, "CLOSE OK") != NULL)
+                            else if(strstr((char *)command->data, "CLOSED") != NULL
+                                 || strstr((char *)command->data, "CLOSE OK") != NULL)
                             {
                                 ctx->debug("TCP socket closed.\r\n", 20);
                                 modem->state = State::connected;
@@ -590,6 +591,10 @@ namespace GSM
 
                     command = buffer_front(&modem->cmd_buffer);
                     command->size = sprintf((char*)command->data, "AT+CSQ\r\n");
+                    buffer_push(&modem->cmd_buffer);
+
+                    command = buffer_front(&modem->cmd_buffer);
+                    command->size = sprintf((char*)command->data, "AT+CIPSTATUS\r\n");
                     buffer_push(&modem->cmd_buffer);
                 }
                 break;
