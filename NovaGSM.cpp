@@ -6,29 +6,33 @@
  */
 
 /**
+ * @see GSM::State
+ *
  * @dot
- * digraph process {
+ * digraph {
  *     none -> init                 [ label = "ATI" ];
- *     init -> none                 [ label = "no response" ];
+ *     init -> none                 [ label = "reset()" ];
  *     init -> locked               [ label = "SIM locked" ];
  *     init -> offline              [ label = "SIM ready" ];
- *     locked -> none               [ label = "no response" ];
+ *     locked -> none               [ label = "reset()" ];
  *     locked -> offline            [ label = "unlock()" ];
- *     offline -> none              [ label = "no response" ];
- *     offline -> online            [ label = "signal" ];
- *     online -> none               [ label = "no response" ];
- *     online -> offline            [ label = "no signal" ];
+ *     offline -> none              [ label = "reset()" ];
+ *     offline -> online            [ label = "" ];
+ *     online -> none               [ label = "reset()" ];
+ *     online -> offline            [ label = "" ];
  *     online -> authenticating     [ label = "connect()" ];
  *     authenticating -> online     [ label = "error/\ntimeout" ];
  *     authenticating -> connected  [ label = "OK" ];
- *     connected -> none            [ label = "no response" ];
+ *     connected -> none            [ label = "reset()" ];
+ *     connected -> offline         [ label = "" ];
  *     connected -> online          [ label = "disconnect()" ];
  *     connected -> handshaking     [ label = "open()" ];
  *     handshaking -> connected     [ label = "error/\ntimeout" ];
  *     handshaking -> idle          [ label = "OK" ];
- *     idle -> none                 [ label = "no response" ];
+ *     idle -> none                 [ label = "reset()" ];
+ *     idle -> offline              [ label = "" ];
  *     idle -> connected            [ label = "close()" ];
- *     idle -> busy                 [ label = "RX data" ];
+ *     idle -> busy                 [ label = "" ];
  *     busy -> idle;
  * }
  * @enddot
@@ -45,7 +49,7 @@ namespace GSM
     namespace // Anonymous
     {
         constexpr uint32_t BAUDRATE = 115200;       /**< Communication baudrate. */
-        constexpr uint32_t DEFAULT_TIMEOUT = 1e5;   /**< Default command timeout if not specified. */
+        constexpr uint32_t DEFAULT_TIMEOUT = 1e5;   /**< Default command timeout (microseconds). */
         constexpr uint16_t BUFFER_SIZE = 1460;      /**< Maximum size of a command data buffer. */
         constexpr uint16_t ID_SIZE = 20;            /**< Maximum size of the modem ID string. */
         constexpr uint8_t POOL_SIZE = 25;           /**< Number of pre-allocated command_t structs in the command_buffer_t pool. */
@@ -79,7 +83,7 @@ namespace GSM
             State state;                    /**< State of the modem. */
             char id[ID_SIZE];               /**< Identification string reported by ATI. */
             uint8_t signal;                 /**< Signal rssi value reported by AT+CSQ. */
-            uint8_t errors;                 /**< Timeout error counter.  If it exceeds MAX_ERRORS reset to State::none. */
+            uint8_t errors;                 /**< Timeout error counter.  If it exceeds MAX_ERRORS call reset(). */
         } modem_t;
 
         /** Gets the next free command_t struct from the buffer.
@@ -135,7 +139,6 @@ namespace GSM
     {
         context_t *ctx = static_cast<context_t*>(context);
         modem_t *modem = new modem_t;
-        command_t *command = NULL;
 
         ctx->uart_begin(BAUDRATE);
 
@@ -174,10 +177,14 @@ namespace GSM
          * response then the next command in the buffer is sent.  Responses are
          * handled based on the GSM::State.  Any pending packets that exceed their
          * timeout value are discarded and the error counter incremented.  
-         * 
+         *
          * If the error counter exceeds MAX_ERRORS the modem is assumed to be MIA and
          * the driver returns to State::none.  The error counter is reset whenever a
          * response is received.
+         * 
+         * If the signal is lost the connection is assumed to be broken and the driver
+         * returns to State::offline.  The user must call connect() and open() again
+         * to re-establish.
          */
 
         if(!buffer->pending && buffer->count > 0)
@@ -209,12 +216,35 @@ namespace GSM
                         buffer->pending->data[buffer->pending->size] = '\0';
                         if(sscanf((char*)buffer->pending->data, "ATI\r\nATI\r\n%[^\r]", modem->id) > 0)
                         {
+                            command_t *command = NULL;
+
                             ctx->debug("Modem is: ", 10);
                             ctx->debug(modem->id, strlen(modem->id));
                             ctx->debug("\r\n", 2);
 
+                            command = buffer_front(&modem->cmd_buffer);
+                            command->size = sprintf((char*)command->data, "AT+CLTS=1\r\n");
+                            buffer_push(&modem->cmd_buffer);
+
+                            command = buffer_front(&modem->cmd_buffer);
+                            command->size = sprintf((char*)command->data, "AT&W\r\n");
+                            buffer_push(&modem->cmd_buffer);
+
+                            command = buffer_front(&modem->cmd_buffer);
+                            command->size = sprintf((char*)command->data, "AT+CFUN=1,1\r\n");
+                            command->timeout = 10000000; // 10 seconds
+                            command->handler = State::init;
+                            buffer_push(&modem->cmd_buffer);
+
+                            command = buffer_front(&modem->cmd_buffer);
+                            command->size = sprintf((char*)command->data, "AT&FZ\r\n");
+                            buffer_push(&modem->cmd_buffer);
+
+                            command = buffer_front(&modem->cmd_buffer);
+                            command->size = sprintf((char*)command->data, "ATE0\r\n");
+                            buffer_push(&modem->cmd_buffer);
+
                             modem->state = State::init;
-                            reset(ctx);
                         }
                         buffer_pop(buffer);
                     }
@@ -242,8 +272,6 @@ namespace GSM
                             command->data[command->size] = '\0';
                             modem->errors = 0;
 
-                            char *str = reinterpret_cast<char *>(command->data);
-
                             if(strstr((char *)command->data, "+CPIN: SIM PIN") != NULL
                             || strstr((char *)command->data, "+CPIN: SIM PUK") != NULL)
                             {
@@ -262,11 +290,9 @@ namespace GSM
                     else if((int32_t)(micros - buffer->timer) > 0)
                     {
                         if(++modem->errors >= MAX_ERRORS)
-                        {
-                            buffer_clear(buffer);
-                            modem->state = State::none;
-                        }
-                        else buffer_pop(buffer);
+                            reset(ctx);
+                        else
+                            buffer_pop(buffer);
                     }
                 }
                 else
@@ -316,11 +342,9 @@ namespace GSM
                     else if((int32_t)(micros - buffer->timer) > 0)
                     {
                         if(++modem->errors >= MAX_ERRORS)
-                        {
-                            buffer_clear(buffer);
-                            modem->state = State::none;
-                        }
-                        else buffer_pop(buffer);
+                            reset(ctx);
+                        else
+                            buffer_pop(buffer);
                     }
                 }
                 else
@@ -366,6 +390,12 @@ namespace GSM
                                     modem->state = State::connected;
                                 }
                                 buffer_pop(&modem->cmd_buffer);
+                            }
+                            else if(strstr((char *)command->data, "SHUT OK") != NULL)
+                            {
+                                ctx->debug("GPRS connection closed.\r\n", 25);
+                                modem->state = State::online;
+                                buffer_pop(buffer);
                             }
                         }
                     }
@@ -425,11 +455,9 @@ namespace GSM
                     else if((int32_t)(micros - buffer->timer) > 0)
                     {
                         if(++modem->errors >= MAX_ERRORS)
-                        {
-                            buffer_clear(buffer);
-                            modem->state = State::none;
-                        }
-                        else buffer_pop(buffer);
+                            reset(ctx);
+                        else
+                            buffer_pop(buffer);
                     }
                 }
                 else
@@ -473,6 +501,12 @@ namespace GSM
                                 modem->state = State::connected;
                                 buffer_pop(buffer);
                                 close(ctx);
+                            }
+                            else if(strstr((char *)command->data, "CLOSE OK") != NULL)
+                            {
+                                ctx->debug("TCP socket closed.\r\n", 20);
+                                modem->state = State::connected;
+                                buffer_pop(buffer);
                             }
                         }
                     }
@@ -541,11 +575,9 @@ namespace GSM
                     else if((int32_t)(micros - buffer->timer) > 0)
                     {
                         if(++modem->errors >= MAX_ERRORS)
-                        {
-                            buffer_clear(buffer);
-                            modem->state = State::none;
-                        }
-                        else buffer_pop(buffer);
+                            reset(ctx);
+                        else
+                            buffer_pop(buffer);
                     }
                 }
                 else
@@ -575,46 +607,25 @@ namespace GSM
                         command->data[command->size] = '\0';
 
                         char *str = strchr((char *)command->data, ':');
-                        char data[BUFFER_SIZE] = {0};
-                        uint16_t read = 0;
-                        uint16_t unread = 0;
-
-                        if(sscanf(str, ": 2,%u,%u\r\n%[^\r]", &read, &unread, data) == 3)
+                        if(str != nullptr)
                         {
-                            for(uint16_t i=0; i < read; ++i)
+                            uint16_t size = strtoul(str+4, NULL, 0);
+                            str = strchr(str, '\n');
+
+                            for(uint16_t i=1; i <= size; ++i)
                             {
-                                modem->rx_data[modem->rx_head] = data[i];
+                                modem->rx_data[modem->rx_head] = str[i];
                                 if(++modem->rx_head >= BUFFER_SIZE)
                                     modem->rx_head = 0U;
                             }
 
-                            modem->rx_count += read;
+                            modem->rx_count += size;
                             if(modem->rx_count >= BUFFER_SIZE)
                                 modem->rx_count = BUFFER_SIZE-1;
-
-                            if(unread)
-                            {
-                                // Insert at front of queue
-                                command->size = snprintf((char*)command->data, BUFFER_SIZE, "AT+CIPRXGET=2,%u\r\n", unread);
-
-                                ctx->uart_clear();
-                                ctx->uart_write(
-                                    command->data,
-                                    command->size);
-
-                                buffer->timer = micros + DEFAULT_TIMEOUT;
-                            }
-                            else
-                            {
-                                modem->state = State::idle;
-                                buffer_pop(&modem->cmd_buffer);
-                            }
                         }
-                        else 
-                        {
-                            modem->state = State::idle;
-                            buffer_pop(&modem->cmd_buffer);
-                        }
+
+                        modem->state = State::idle;
+                        buffer_pop(&modem->cmd_buffer);
                     }
                 }
                 else modem->state = State::idle;
@@ -636,49 +647,32 @@ namespace GSM
 
     int reset(context_t *ctx)
     {
+        if(ctx == nullptr)
+            return -EINVAL;
+
         modem_t *modem = static_cast<modem_t*>(ctx->priv);
-        command_t *command = NULL;
 
-        if(modem->state == State::none)
-            return -ENODEV;
+        // Clear rx buffer
+        clear(ctx);
 
-        if(modem->cmd_buffer.count+5 >= POOL_SIZE)
-            return -EAGAIN;
-
-        command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "AT+CLTS=1\r\n");
-        buffer_push(&modem->cmd_buffer);
-
-        command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "AT&W\r\n");
-        buffer_push(&modem->cmd_buffer);
-
-        command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "AT+CFUN=1,1\r\n");
-        command->timeout = 10000000; // 10 seconds
-        command->handler = State::init;
-        buffer_push(&modem->cmd_buffer);
-
-        command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "AT&FZ\r\n");
-        buffer_push(&modem->cmd_buffer);
-
-        command = buffer_front(&modem->cmd_buffer);
-        command->size = sprintf((char*)command->data, "ATE0\r\n");
-        buffer_push(&modem->cmd_buffer);
-
+        // Clear command buffer
+        buffer_clear(&modem->cmd_buffer);
+        
+        // Reset state machine
+        modem->state = State::none;
+        modem->id[0] = '\0';
+        modem->signal = 99;
         return 0;
     }
 
     int unlock(context_t *ctx, const char *pin)
     {
+        if(ctx == nullptr || pin == nullptr)
+            return -EINVAL;
+
         modem_t *modem = static_cast<modem_t*>(ctx->priv);
-
-        if(modem->state != State::locked)
-            return -EPERM;
-
         if(modem->cmd_buffer.count >= POOL_SIZE)
-            return -EAGAIN;
+            return -ENOBUFS;
 
         command_t *command = buffer_front(&modem->cmd_buffer);
         command->size = snprintf((char*)command->data, BUFFER_SIZE, "AT+CPIN=\"%s\"\r\n", pin);
@@ -689,11 +683,11 @@ namespace GSM
 
     int connect(context_t *ctx, const char *apn, const char *user, const char *pwd)
     {
+        if(ctx == nullptr || apn == nullptr || user == nullptr || pwd == nullptr)
+            return -EINVAL;
+
         modem_t *modem = static_cast<modem_t*>(ctx->priv);
         command_t *command = NULL;
-
-        if(user == NULL || pwd == NULL)
-            return -EINVAL;
 
         switch(modem->state)
         {
@@ -702,27 +696,23 @@ namespace GSM
                 return -ENODEV;
             case State::init:
             case State::locked:
-                return -EPERM;
             case State::offline:
-                return -EIO;
-
-            // Already connecting, return 0
+                return -ENETUNREACH;
             case State::authenticating:
-                return 0;
-
-            // TCP socket open, close it and continue
-            case State::idle:
-                close(ctx);
-                [[fallthrough]];
-            
-            // Continue
+                return -EALREADY;
             case State::connected:
+            case State::handshaking:
+            case State::idle:
+            case State::busy:
+                return -EISCONN;
+
+            // Continue
             case State::online:
                 break;
         }
 
         if(modem->cmd_buffer.count+19 >= POOL_SIZE)
-            return -EAGAIN;
+            return -ENOBUFS;
 
         command = buffer_front(&modem->cmd_buffer);
         command->size = sprintf((char*)command->data, "AT+CIPSHUT\r\n");
@@ -837,17 +827,39 @@ namespace GSM
 
     int disconnect(context_t *ctx)
     {
+        if(ctx == nullptr)
+            return -EINVAL;
+
         modem_t *modem = static_cast<modem_t*>(ctx->priv);
         command_t *command = NULL;
 
-        if(modem->state == State::none)
-            return -ENODEV;
+        switch(modem->state)
+        {
+            // Invalid state, return error
+            case State::none:
+                return -ENODEV;
+            case State::init:
+            case State::locked:
+            case State::offline:
+                return -ENETUNREACH;
+            case State::online:
+                return -ENOTCONN;
+
+            // Socket is open, close it first
+            case State::handshaking:
+            case State::idle:
+            case State::busy:
+                close(ctx);
+                [[fallthrough]];
+
+            // Continue
+            case State::authenticating:
+            case State::connected:
+                break;
+        }
 
         if(modem->cmd_buffer.count+3 >= POOL_SIZE)
-            return -EAGAIN;
-
-        if(modem->state == State::idle)
-            close(ctx);
+            return -ENOBUFS;
 
         command = buffer_front(&modem->cmd_buffer);
         command->size = sprintf((char*)command->data, "AT+CIPSHUT\r\n");
@@ -863,6 +875,9 @@ namespace GSM
 
     int open(context_t *ctx, const char *host, uint16_t port)
     {
+        if(ctx == nullptr || host == nullptr)
+            return -EINVAL;
+
         modem_t *modem = static_cast<modem_t*>(ctx->priv);
 
         switch(modem->state)
@@ -873,19 +888,23 @@ namespace GSM
             case State::init:
             case State::locked:
             case State::offline:
+                return -ENETUNREACH;
             case State::online:
-                return -EPERM;
             case State::authenticating:
-                return -EBUSY;
+                return -ENOTCONN;
+            case State::handshaking:
+                return -EALREADY;
+            case State::idle:
+            case State::busy:
+                return -EADDRINUSE;
 
             // Continue
-            case State::idle:
             case State::connected:
                 break;
         }
 
         if(modem->cmd_buffer.count >= POOL_SIZE)
-            return -EAGAIN;
+            return -ENOBUFS;
 
         command_t *command = buffer_front(&modem->cmd_buffer);
         command->size = snprintf((char*)command->data, BUFFER_SIZE, "AT+CIPSTART=\"TCP\",\"%s\",%u\r\n", host, port);
@@ -898,13 +917,34 @@ namespace GSM
 
     int close(context_t *ctx)
     {
+        if(ctx == nullptr)
+            return -EINVAL;
+
         modem_t *modem = static_cast<modem_t*>(ctx->priv);
 
-        if(modem->state == State::none)
-            return -ENODEV;
+        switch(modem->state)
+        {
+            // Invalid state, return error
+            case State::none:
+                return -ENODEV;
+            case State::init:
+            case State::locked:
+            case State::offline:
+                return -ENETUNREACH;
+            case State::online:
+            case State::authenticating:
+            case State::connected:
+                return -ENOTSOCK;
+
+            // Continue
+            case State::handshaking:
+            case State::idle:
+            case State::busy:
+                break;
+        }
 
         if(modem->cmd_buffer.count >= POOL_SIZE)
-            return -EAGAIN;
+            return -ENOBUFS;
 
         command_t *command = buffer_front(&modem->cmd_buffer);
         command->size = sprintf((char*)command->data, "AT+CIPCLOSE\r\n");
@@ -913,14 +953,69 @@ namespace GSM
         return 0;
     }
 
-    int write(context_t *ctx, uint8_t *data, uint16_t size)
+    int clear(context_t *ctx)
+    {
+        if(ctx == nullptr)
+            return -EINVAL;
+
+        modem_t *modem = static_cast<modem_t*>(ctx->priv);
+        modem->rx_count = 0;
+        modem->rx_head = 0;
+        modem->rx_tail = 0;
+        return 0;
+    }
+
+    uint16_t available(context_t *ctx)
     {
         modem_t *modem = static_cast<modem_t*>(ctx->priv);
-        if(modem->state != State::idle)
-            return -EBADF;
+        return modem->rx_count;
+    }
+
+    uint16_t read(context_t *ctx, uint8_t *data,  uint16_t size)
+    {
+        modem_t *modem = static_cast<modem_t*>(ctx->priv);
+        uint16_t count = std::min(modem->rx_count, size);
+
+        for(uint16_t i=0; i < count; i++)
+        {
+            data[i] = modem->rx_data[modem->rx_tail];
+            if(++modem->rx_tail >= BUFFER_SIZE)
+                modem->rx_tail = 0U;
+        }
+        modem->rx_count -= count;
+
+        return count;
+    }
+
+    int write(context_t *ctx, uint8_t *data, uint16_t size)
+    {
+        if(ctx == nullptr || data == nullptr)
+            return -EINVAL;
+
+        modem_t *modem = static_cast<modem_t*>(ctx->priv);
+        switch(modem->state)
+        {
+            // Invalid state, return error
+            case State::none:
+                return -ENODEV;
+            case State::init:
+            case State::locked:
+            case State::offline:
+                return -ENETUNREACH;
+            case State::online:
+            case State::authenticating:
+            case State::connected:
+            case State::handshaking:
+                return -ENOSTR;
+
+            // Continue
+            case State::idle:
+            case State::busy:
+                break;
+        }
 
         if(modem->cmd_buffer.count+2 > POOL_SIZE)
-            return -EAGAIN;
+            return -ENOBUFS;
 
         uint16_t count = std::min(BUFFER_SIZE, size);
 
@@ -939,29 +1034,5 @@ namespace GSM
         }
 
         return count;
-    }
-
-    int read(context_t *ctx, uint8_t *data,  uint16_t size)
-    {
-        modem_t *modem = static_cast<modem_t*>(ctx->priv);
-        if(modem->state != State::idle)
-            return -EBADF;
-        
-        uint16_t count = std::min(modem->rx_count, size);
-        for(uint16_t i=0; i < count; i++)
-        {
-            data[i] = modem->rx_data[modem->rx_tail];
-            if(++modem->rx_tail >= BUFFER_SIZE)
-                modem->rx_tail = 0U;
-        }
-        modem->rx_count -= count;
-
-        return count;
-    }
-
-    uint16_t available(context_t *ctx)
-    {
-        modem_t *modem = static_cast<modem_t*>(ctx->priv);
-        return modem->rx_count;
     }
 }
