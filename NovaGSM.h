@@ -95,7 +95,6 @@ namespace GSM
      * @param [in] ctx driver operating context.
      * @param [in] pin SIM card password
      * @return -EINVAL if inputs are null.
-     * @return -ENOBUFS if command buffer is full.
      */
     int unlock(context_t *ctx, const char *pin);
 
@@ -112,7 +111,6 @@ namespace GSM
      * @return -ENETUNREACH if the network is not available.
      * @return -EALREADY if authentication is already in progress.
      * @return -EISCONN if already connected to GPRS.
-     * @return -ENOBUFS if command buffer is full.
      * @warning ensure ctx is not null.
      */
     int connect(context_t *ctx, const char *apn, const char *user="", const char *pwd="");
@@ -144,7 +142,6 @@ namespace GSM
      * @return -ENOTCONN if GPRS is not connected.
      * @return -EALREADY if handshaking is already in progress.
      * @return -EADDRINUSE if a socket is already open.
-     * @return -ENOBUFS if command buffer is full.
      */
     int open(context_t *ctx, const char *host, uint16_t port);
 
