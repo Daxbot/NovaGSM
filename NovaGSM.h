@@ -14,13 +14,12 @@
 /** Handles buffered communication through a GSM/GPRS modem. */
 namespace GSM
 {
-    /** Defines resources and callbacks used by the drivers. */
+    /** Defines resources and callbacks used by the driver. */
     typedef struct {
-        void (*uart_begin)(uint32_t baud);                  /**< Initialize the UART at baudrate. */
-        size_t (*uart_available)();                         /**< Return the number of bytes that can be read from the UART. */
-        size_t (*uart_read)(uint8_t *data, size_t size);    /**< Read 'size' bytes into 'data' from the UART. */
-        void (*uart_write)(uint8_t* data, size_t size);     /**< Write 'size' bytes from 'data' to the UART. */
-        void *priv;                                         /**< Private data structure for driver use. */
+        size_t (*available)();                          /**< Return the number of bytes that can be read from the device. */
+        size_t (*read)(uint8_t *data, size_t size);     /**< Read 'size' bytes into 'data' from device. */
+        void (*write)(uint8_t* data, size_t size);      /**< Write 'size' bytes from 'data' to device. */
+        void *priv;                                     /**< Initialized by the driver for private use. */
     } context_t;
 
     /** State of the device.
@@ -54,7 +53,7 @@ namespace GSM
      */
     void deinit(void *context);
 
-    /** Handle UART communication with the modem.
+    /** Handle communication with the modem.
      *
      * @param [in] context driver operating context.
      * @param [in] micros microseconds elapsed since initialization.

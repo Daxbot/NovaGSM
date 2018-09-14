@@ -10,7 +10,6 @@
 #include <errno.h>
 
 #include "NovaGSM.h"
-#define DEBUG
 
 /**@{*/
 /** Debug print. */
@@ -59,7 +58,6 @@ namespace GSM
 {
     namespace // Anonymous
     {
-        constexpr uint32_t BAUDRATE = 115200;       /**< Communication baudrate. */
         constexpr uint32_t DEFAULT_TIMEOUT = 1e5;   /**< Default command timeout (microseconds). */
         constexpr uint16_t BUFFER_SIZE = 1460;      /**< Maximum size of a command data buffer. */
         constexpr uint16_t ID_SIZE = 20;            /**< Maximum size of the modem ID string. */
@@ -153,8 +151,6 @@ namespace GSM
         context_t *ctx = static_cast<context_t*>(context);
         modem_t *modem = new modem_t;
 
-        ctx->uart_begin(BAUDRATE);
-
         modem->cmd_buffer.pending = nullptr;
         modem->cmd_buffer.count = 0;
         modem->cmd_buffer.head = 0;
@@ -204,7 +200,7 @@ namespace GSM
         {
             buffer->pending = &buffer->pool[buffer->tail];
 
-            ctx->uart_write(buffer->pending->data, buffer->pending->size);
+            ctx->write(buffer->pending->data, buffer->pending->size);
             if(buffer->pending->handler != State::none)
                 modem->state = buffer->pending->handler;
 
@@ -218,10 +214,10 @@ namespace GSM
                 /** State::none - wait for the modem to respond to an ATI query and transition to State::init. */
                 if(buffer->pending)
                 {
-                    if(ctx->uart_available())
+                    if(ctx->available())
                     {
                         uint8_t *pch = &buffer->pending->data[buffer->pending->size++];
-                        ctx->uart_read(pch, 1);
+                        ctx->read(pch, 1);
                     }
                     else if((int32_t)(micros - buffer->timer) > 0)
                     {
@@ -270,11 +266,11 @@ namespace GSM
                 /** State::locked - SIM is locked, call unlock() with the password to transition to State::offline. */
                 if(buffer->pending)
                 {
-                    if(ctx->uart_available())
+                    if(ctx->available())
                     {
                         uint8_t *pch = &buffer->pending->data[buffer->pending->size++];
 
-                        ctx->uart_read(pch, 1);
+                        ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(buffer->pending->data);
@@ -319,11 +315,11 @@ namespace GSM
                 /** State::online - registered on network, wait for connect() to transition to State::authenticating. */
                 if(buffer->pending)
                 {
-                    if(ctx->uart_available())
+                    if(ctx->available())
                     {
                         uint8_t *pch = &buffer->pending->data[buffer->pending->size++];
 
-                        ctx->uart_read(pch, 1);
+                        ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(buffer->pending->data);
@@ -371,10 +367,10 @@ namespace GSM
                 /** State::authenticating - handle connect() and transition to State::connected on success. */
                 if(buffer->pending && (int32_t)(micros - buffer->timer) < 0)
                 {
-                    if(ctx->uart_available())
+                    if(ctx->available())
                     {
                         uint8_t *pch = &buffer->pending->data[buffer->pending->size++];
-                        ctx->uart_read(pch, 1);
+                        ctx->read(pch, 1);
 
                         if(*pch == '\n')
                         {
@@ -385,9 +381,6 @@ namespace GSM
                             if(strstr(data, "ERROR"))
                             {
                                 GSM_DEBUG("Authentication failed.\r\n", 24);
-
-                                GSM_DEBUG("RX: ", 4);
-                                GSM_DEBUG(data, buffer->pending->size);
 
                                 modem->state = State::online;
                                 buffer_clear(buffer);
@@ -435,11 +428,11 @@ namespace GSM
                 /** State::connected - connected to GPRS, wait for open() to transition to State::handshaking. */
                 if(buffer->pending)
                 {
-                    if(ctx->uart_available())
+                    if(ctx->available())
                     {
                         uint8_t *pch = &buffer->pending->data[buffer->pending->size++];
 
-                        ctx->uart_read(pch, 1);
+                        ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(buffer->pending->data);
@@ -503,11 +496,11 @@ namespace GSM
                 /** State::handshaking - handle open() and transition to State::idle on success. */
                 if(buffer->pending && (int32_t)(micros - buffer->timer) < 0)
                 {
-                    if(ctx->uart_available())
+                    if(ctx->available())
                     {
                         uint8_t *pch = &buffer->pending->data[buffer->pending->size++];
 
-                        ctx->uart_read(pch, 1);
+                        ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(buffer->pending->data);
@@ -542,11 +535,11 @@ namespace GSM
                 /** State::idle - socket is open, handle write() and wait for socket rx data to transition to State::busy */
                 if(buffer->pending)
                 {
-                    if(ctx->uart_available())
+                    if(ctx->available())
                     {
                         uint8_t *pch = &buffer->pending->data[buffer->pending->size++];
 
-                        ctx->uart_read(pch, 1);
+                        ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(buffer->pending->data);
@@ -567,7 +560,7 @@ namespace GSM
                                         "AT+CIPRXGET=2,%u\r\n",
                                         size);
 
-                                    ctx->uart_write(
+                                    ctx->write(
                                         buffer->pending->data,
                                         buffer->pending->size);
 
@@ -627,10 +620,10 @@ namespace GSM
                 /** State::busy - read socket data into the rx ring buffer and transition to State::idle. */
                 if(buffer->pending)
                 {
-                    if(ctx->uart_available())
+                    if(ctx->available())
                     {
                         uint8_t *pch = &buffer->pending->data[buffer->pending->size++];
-                        ctx->uart_read(pch, 1);
+                        ctx->read(pch, 1);
                     }
                     else if((int32_t)(micros - buffer->timer) > 0)
                     {
