@@ -20,8 +20,6 @@ namespace GSM
         size_t (*uart_available)();                         /**< Return the number of bytes that can be read from the UART. */
         size_t (*uart_read)(uint8_t *data, size_t size);    /**< Read 'size' bytes into 'data' from the UART. */
         void (*uart_write)(uint8_t* data, size_t size);     /**< Write 'size' bytes from 'data' to the UART. */
-        void (*uart_clear)();                               /**< Discard pending read bytes; uart_available() should return 0. */
-        void (*debug)(const char* data, size_t size);       /**< Debug write. */
         void *priv;                                         /**< Private data structure for driver use. */
     } context_t;
 
@@ -95,6 +93,7 @@ namespace GSM
      * @param [in] ctx driver operating context.
      * @param [in] pin SIM card password
      * @return -EINVAL if inputs are null.
+     * @return -ENOBUFS if command buffer is full.
      */
     int unlock(context_t *ctx, const char *pin);
 
@@ -111,6 +110,7 @@ namespace GSM
      * @return -ENETUNREACH if the network is not available.
      * @return -EALREADY if authentication is already in progress.
      * @return -EISCONN if already connected to GPRS.
+     * @return -ENOBUFS if command buffer is full.
      * @warning ensure ctx is not null.
      */
     int connect(context_t *ctx, const char *apn, const char *user="", const char *pwd="");
@@ -142,6 +142,7 @@ namespace GSM
      * @return -ENOTCONN if GPRS is not connected.
      * @return -EALREADY if handshaking is already in progress.
      * @return -EADDRINUSE if a socket is already open.
+     * @return -ENOBUFS if command buffer is full.
      */
     int open(context_t *ctx, const char *host, uint16_t port);
 
