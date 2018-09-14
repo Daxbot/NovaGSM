@@ -562,7 +562,10 @@ namespace GSM
                                 {
                                     // Handle immediately:
                                     // AT+CIPRXGET=2,[size] - read 'size' bytes from the socket
-                                    buffer->pending->size = snprintf(data, BUFFER_SIZE, "AT+CIPRXGET=2,%u\r\n", size);
+                                    buffer->pending->size = snprintf(
+                                        (char *)buffer->pending->data, BUFFER_SIZE,
+                                        "AT+CIPRXGET=2,%u\r\n",
+                                        size);
 
                                     ctx->uart_write(
                                         buffer->pending->data,
