@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.15"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>NovaGSM: Main Page</title>
+<title>NovaGSM: NovaGSM</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -60,11 +60,30 @@ $(function() {
 </iframe>
 </div>
 
-<div class="header">
+<div class="PageDoc"><div class="header">
   <div class="headertitle">
-<div class="title">NovaGSM Documentation</div>  </div>
+<div class="title">NovaGSM </div>  </div>
 </div><!--header-->
 <div class="contents">
+<div class="textblock"><p class="">Generic driver for estabilishing a TCP connection through a standard GSM/GPRS modem using AT commands</p><ul>
+<li><a href="https://github.com/DaxBot/NovaGSM">repository</a></li>
+<li><a href="https://daxbot.github.io/NovaGSM/index.html">documentation</a></li>
+</ul>
+<h2>Goals</h2>
+<p class="">The goals of the project are as follows:</p><ul>
+<li>be unconstrained by hardware</li>
+<li>be suitable for an embedded environment (no classes or inheiritance).</li>
+<li>be non-blocking</li>
+</ul>
+<h2>Description</h2>
+<p class="">This driver attempts to establish communication with a GSM/GPRS modem using standard AT commands. When the device is identified use <a class="el" href="namespaceGSM.html#a2c1c625b747a8709947cfeafb8548d21" title="Connect to GPRS.">connect()</a> to authenticate with GPRS and <a class="el" href="namespaceGSM.html#aef65f6a0618790e064d1a3670bb5931b" title="Open a TCP socket.">open()</a> establish a TCP stream.</p>
+<p class="">Once a socket is open data can be sent or recieved using a standard read/write/available interface. An internal ring buffer is used to receive data, and a pre-allocated pool of packets is used to queue commands to sent to the device. This allows the driver to be completely non-blocking without relying on complicated callbacks.</p>
+<p class="">The <a class="el" href="namespaceGSM.html#a6ecc3e500e68749686e667c298df5e9f" title="Handle communication with the modem.">process()</a> state machine is below, descriptions of states can be found <a href="https://daxbot.github.io/NovaGSM/namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7">here</a> </p><div class="image">
+<img src="https://daxbot.github.io/NovaGSM/dot_inline_dotgraph_1.png" alt="process() state machine"/>
+</div>
+<h2>Setup</h2>
+<p class="">TODO </p>
+</div></div><!-- PageDoc -->
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

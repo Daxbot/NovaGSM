@@ -18,7 +18,7 @@ An internal ring buffer is used to receive data, and a pre-allocated pool of pac
 sent to the device.  This allows the driver to be completely non-blocking without relying on complicated callbacks.
 
 The process() state machine is below, descriptions of states can be found [here](https://daxbot.github.io/NovaGSM/namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7)
-![process() state machine](docs/dot_inline_dotgraph_1.png)
+![process() state machine](https://daxbot.github.io/NovaGSM/dot_inline_dotgraph_1.png)
  
 ## Setup
 TODO
