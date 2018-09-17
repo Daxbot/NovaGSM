@@ -873,24 +873,7 @@ RECURSIVE              = YES
 # Note that relative paths are relative to the directory from which doxygen is
 # run.
 
-EXCLUDE                = CANopenNode/README.md \
-						 CANopenNode/stack/drvTemplate \
-						 CANopenNode/stack/dsPIC30F \
-						 CANopenNode/stack/eCos \
-						 CANopenNode/stack/LPC1768 \
-						 CANopenNode/stack/LPC177x_8x \
-						 CANopenNode/stack/MCF5282 \
-						 CANopenNode/stack/PIC24_dsPIC33 \
-						 CANopenNode/stack/PIC32 \
-						 CANopenNode/stack/SAM3X \
-						 CANopenNode/stack/socketCAN \
-						 CANopenNode/stack/STM32 \
-						 CANopenNode/stack/STM32F3 \
-						 CANopenNode/stack/CO_trace.h \
-						 CANopenNode/example \
-						 board \
-						 CO_OD.c \
-						 CO_OD.h
+EXCLUDE                = examples
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
@@ -2220,7 +2203,7 @@ HIDE_UNDOC_RELATIONS   = YES
 # set to NO
 # The default value is: NO.
 
-HAVE_DOT               = NO
+HAVE_DOT               = YES
 
 # The DOT_NUM_THREADS specifies the number of dot invocations doxygen is allowed
 # to run in parallel. When set to 0 doxygen will base this on the number of

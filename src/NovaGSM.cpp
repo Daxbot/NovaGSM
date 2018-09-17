@@ -63,7 +63,7 @@ namespace GSM
         constexpr uint16_t ID_SIZE = 20;            /**< Maximum size of the modem ID string. */
         constexpr uint16_t ADDR_SIZE = 20;          /**< Maximum size of the IP address string. */
         constexpr uint8_t POOL_SIZE = 10;           /**< Number of pre-allocated command_t structs in the command_buffer_t pool. */
-        constexpr uint8_t MAX_ERRORS = 10;          /**< Maximum communication errors before modem is considered MIA. */
+        constexpr uint8_t MAX_ERRORS = 100;         /**< Maximum communication errors before modem is considered MIA. */
 
         /** Represents an AT command to be sent. */
         typedef struct {
@@ -289,6 +289,13 @@ namespace GSM
                                 GSM_DEBUG("SIM ready.\r\n", 12);
                                 modem->state = State::offline;
                                 buffer_pop(buffer);
+                            }
+                            else if(strstr(data, "+CFUN"))
+                            {
+                                // If it ends with 'OK' continue
+                                if(data[buffer->pending->size - 4] == 'O'
+                                && data[buffer->pending->size - 3] == 'K')
+                                    buffer_pop(buffer);
                             }
                         }
                     }
@@ -687,6 +694,7 @@ namespace GSM
         modem->state = State::none;
         modem->id[0] = '\0';
         modem->signal = 99;
+        modem->errors = 0;
         return 0;
     }
 

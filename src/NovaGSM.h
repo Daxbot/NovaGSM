@@ -17,8 +17,8 @@ namespace GSM
     /** Defines resources and callbacks used by the driver. */
     typedef struct {
         size_t (*available)();                          /**< Return the number of bytes that can be read from the device. */
-        size_t (*read)(uint8_t *data, size_t size);     /**< Read 'size' bytes into 'data' from device. */
-        void (*write)(uint8_t* data, size_t size);      /**< Write 'size' bytes from 'data' to device. */
+        size_t (*read)(void *data, size_t size);        /**< Read 'size' bytes into 'data' from device. */
+        void (*write)(const void *data, size_t size);   /**< Write 'size' bytes from 'data' to device. */
         void *priv;                                     /**< Initialized by the driver for private use. */
     } context_t;
 
@@ -210,6 +210,21 @@ namespace GSM
      */
     inline int write(context_t *ctx, const char *data, uint8_t size)
         { return write(ctx, (uint8_t *)data, size); };
+
+     /** Write a byte to the TCP socket.
+     *
+     * Must be in State::idle or State::busy
+     *
+     * @param [in] ctx driver operating context.
+     * @param [in] data byte to write.
+     * @return -EINVAL if inputs are null.
+     * @return -ENODEV if the device is not responsive.
+     * @return -ENETUNREACH if the network is not available.
+     * @return -ENOSTR if the socket is not open for streaming.
+     * @return -ENOBUFS if command buffer is full.
+     */
+    inline int write(context_t *ctx, uint8_t data)
+        { return write(ctx, &data, 1); };
 }
 
 #endif /* NOVAGSM_H_ */
