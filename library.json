@@ -1,0 +1,21 @@
+{
+    "name": "NovaGSM",
+    "version": "1.0.0",
+    "keywords": "gsm, gprs, iot",
+    "description": "A hardware-agnostics non-blocking GSM/GPRS modem driver written for embedded devices.",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DaxBot/NovaGSM"
+    },
+    "authors": {
+        "name": "Wilkins White",
+        "email": "ww@novadynamics.com",
+        "maintainer": true
+    },
+    "license": "MIT",
+    "export": {
+        "include": "src"
+    },
+    "frameworks": "*",
+    "platforms": "*"
+}
