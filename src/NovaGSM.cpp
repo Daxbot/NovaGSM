@@ -852,7 +852,7 @@ namespace GSM
             case State::idle:
             case State::busy:
                 close(ctx);
-                [[fallthrough]];
+                break;
 
             // Continue
             case State::connected:
