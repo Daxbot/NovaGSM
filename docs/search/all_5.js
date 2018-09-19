@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['gsm',['GSM',['../namespaceGSM.html',1,'']]],
-  ['gsm_5fdebug',['GSM_DEBUG',['../NovaGSM_8cpp.html#aee04938357b8238ecfe88a47eb32cdfc',1,'NovaGSM.cpp']]]
+  ['flush',['flush',['../namespaceGSM.html#a4df6880b45247ffa2947951b619a5efc',1,'GSM']]]
 ];

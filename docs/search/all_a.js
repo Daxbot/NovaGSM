@@ -1,6 +1,7 @@
 var searchData=
 [
-  ['offline',['offline',['../namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca',1,'GSM']]],
-  ['online',['online',['../namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab',1,'GSM']]],
-  ['open',['open',['../namespaceGSM.html#aef65f6a0618790e064d1a3670bb5931b',1,'GSM']]]
+  ['novagsm',['NovaGSM',['../index.html',1,'']]],
+  ['none',['none',['../namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a334c4a4c42fdb79d7ebc3e73b517e6f8',1,'GSM']]],
+  ['novagsm_2ecpp',['NovaGSM.cpp',['../NovaGSM_8cpp.html',1,'']]],
+  ['novagsm_2eh',['NovaGSM.h',['../NovaGSM_8h.html',1,'']]]
 ];

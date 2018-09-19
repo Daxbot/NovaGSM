@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['init',['init',['../namespaceGSM.html#abb03fb9cb58e2aff07fbe3857c391257',1,'GSM']]]
+  ['flush',['flush',['../namespaceGSM.html#a4df6880b45247ffa2947951b619a5efc',1,'GSM']]]
 ];

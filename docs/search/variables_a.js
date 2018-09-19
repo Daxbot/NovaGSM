@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['write',['write',['../structGSM_1_1context__t.html#a34be96ee3b158dde26567fda6db9fb01',1,'GSM::context_t']]]
+  ['update_5ftimer',['update_timer',['../NovaGSM_8cpp.html#ab6b852f6a6bc23edec66d44f6df6a763',1,'NovaGSM.cpp']]],
+  ['user',['user',['../NovaGSM_8cpp.html#a5a97efddcfa68bd85e60237a585c5c5b',1,'NovaGSM.cpp']]]
 ];

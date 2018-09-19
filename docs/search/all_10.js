@@ -1,4 +1,6 @@
 var searchData=
 [
-  ['write',['write',['../structGSM_1_1context__t.html#a34be96ee3b158dde26567fda6db9fb01',1,'GSM::context_t::write()'],['../namespaceGSM.html#a11dfd2c9b43bffd2e9268c6f2d2db897',1,'GSM::write(context_t *ctx, uint8_t *data, uint16_t size)'],['../namespaceGSM.html#ac45241845bdc1d6dfe8f6b358916c742',1,'GSM::write(context_t *ctx, const char *data, uint8_t size)'],['../namespaceGSM.html#a8a6e91831e9d4bd811c97351736bc6ca',1,'GSM::write(context_t *ctx, uint8_t data)']]]
+  ['unlock',['unlock',['../namespaceGSM.html#a728def5272912aeb6e1ddd20d5b3cdf4',1,'GSM']]],
+  ['update_5ftimer',['update_timer',['../NovaGSM_8cpp.html#ab6b852f6a6bc23edec66d44f6df6a763',1,'NovaGSM.cpp']]],
+  ['user',['user',['../NovaGSM_8cpp.html#a5a97efddcfa68bd85e60237a585c5c5b',1,'NovaGSM.cpp']]]
 ];
