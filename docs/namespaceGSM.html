@@ -90,10 +90,9 @@ Enumerations</h2></td></tr>
 &#160;&#160;<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab">State::online</a>, 
 <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e">State::authenticating</a>, 
 <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7">State::ready</a>, 
-<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a19483675c94dd990882c3c65a5a6edbe">State::handshaking</a>, 
+<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb">State::idle</a>, 
 <br />
-&#160;&#160;<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb">State::idle</a>, 
-<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7">State::busy</a>
+&#160;&#160;<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7">State::busy</a>
 <br />
  }</td></tr>
 <tr class="memdesc:a4d5250778227b48f8f99b4e290393fa7"><td class="mdescLeft">&#160;</td><td class="mdescRight">State of the device.  <a href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7">More...</a><br /></td></tr>
@@ -119,60 +118,57 @@ Functions</h2></td></tr>
 <tr class="memitem:a5614c46a421c6896115433507c8ffbb9"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a5614c46a421c6896115433507c8ffbb9">signal</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
 <tr class="memdesc:a5614c46a421c6896115433507c8ffbb9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the rssi value reported by AT+CSQ.  <a href="#a5614c46a421c6896115433507c8ffbb9">More...</a><br /></td></tr>
 <tr class="separator:a5614c46a421c6896115433507c8ffbb9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a706888c1788f8116952db436c15b012d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a706888c1788f8116952db436c15b012d">reset</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
-<tr class="memdesc:a706888c1788f8116952db436c15b012d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reinitialize driver.  <a href="#a706888c1788f8116952db436c15b012d">More...</a><br /></td></tr>
-<tr class="separator:a706888c1788f8116952db436c15b012d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a728def5272912aeb6e1ddd20d5b3cdf4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a728def5272912aeb6e1ddd20d5b3cdf4">unlock</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *pin)</td></tr>
 <tr class="memdesc:a728def5272912aeb6e1ddd20d5b3cdf4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unlocks the SIM card.  <a href="#a728def5272912aeb6e1ddd20d5b3cdf4">More...</a><br /></td></tr>
 <tr class="separator:a728def5272912aeb6e1ddd20d5b3cdf4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acc2246f99aa28a95f4069d8f1a695595"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595">authenticate</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *<a class="el" href="NovaGSM_8cpp.html#a025796f1c4f4ff980635351de03371fc">apn</a>, const char *<a class="el" href="NovaGSM_8cpp.html#a5a97efddcfa68bd85e60237a585c5c5b">user</a>=&quot;&quot;, const char *<a class="el" href="NovaGSM_8cpp.html#acaa8452172c4373c4d366309b292504c">pwd</a>=&quot;&quot;)</td></tr>
 <tr class="memdesc:acc2246f99aa28a95f4069d8f1a695595"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the GPRS authentication credentials.  <a href="#acc2246f99aa28a95f4069d8f1a695595">More...</a><br /></td></tr>
 <tr class="separator:acc2246f99aa28a95f4069d8f1a695595"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7c4e0cdf479f8bbabc2e25f928998233"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233">connect</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *<a class="el" href="NovaGSM_8cpp.html#ab5451cef4a73e2304f34e6c54824d02e">host</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#a8e0798404bf2cf5dabb84c5ba9a4f236">port</a>)</td></tr>
-<tr class="memdesc:a7c4e0cdf479f8bbabc2e25f928998233"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the TCP connection information.  <a href="#a7c4e0cdf479f8bbabc2e25f928998233">More...</a><br /></td></tr>
+<tr class="memitem:a7c4e0cdf479f8bbabc2e25f928998233"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233">connect</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *host, uint16_t port)</td></tr>
+<tr class="memdesc:a7c4e0cdf479f8bbabc2e25f928998233"><td class="mdescLeft">&#160;</td><td class="mdescRight">Open a TCP socket.  <a href="#a7c4e0cdf479f8bbabc2e25f928998233">More...</a><br /></td></tr>
 <tr class="separator:a7c4e0cdf479f8bbabc2e25f928998233"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a302f7aa6a969795bbbef279c9c82f152"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a302f7aa6a969795bbbef279c9c82f152">disconnect</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
 <tr class="memdesc:a302f7aa6a969795bbbef279c9c82f152"><td class="mdescLeft">&#160;</td><td class="mdescRight">Close TCP socket.  <a href="#a302f7aa6a969795bbbef279c9c82f152">More...</a><br /></td></tr>
 <tr class="separator:a302f7aa6a969795bbbef279c9c82f152"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a57bcb8c57e60e4623c003d465d882770"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a57bcb8c57e60e4623c003d465d882770">clear</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
-<tr class="memdesc:a57bcb8c57e60e4623c003d465d882770"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears the rx ring buffer.  <a href="#a57bcb8c57e60e4623c003d465d882770">More...</a><br /></td></tr>
+<tr class="memdesc:a57bcb8c57e60e4623c003d465d882770"><td class="mdescLeft">&#160;</td><td class="mdescRight">Discards unread data in the rx ring buffer.  <a href="#a57bcb8c57e60e4623c003d465d882770">More...</a><br /></td></tr>
 <tr class="separator:a57bcb8c57e60e4623c003d465d882770"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4df6880b45247ffa2947951b619a5efc"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a4df6880b45247ffa2947951b619a5efc">flush</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
-<tr class="memdesc:a4df6880b45247ffa2947951b619a5efc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flushes the command buffer.  <a href="#a4df6880b45247ffa2947951b619a5efc">More...</a><br /></td></tr>
+<tr class="memdesc:a4df6880b45247ffa2947951b619a5efc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Blocks until all bytes in the tx ring buffer have been sent or timeout.  <a href="#a4df6880b45247ffa2947951b619a5efc">More...</a><br /></td></tr>
 <tr class="separator:a4df6880b45247ffa2947951b619a5efc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a706888c1788f8116952db436c15b012d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a706888c1788f8116952db436c15b012d">reset</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
+<tr class="memdesc:a706888c1788f8116952db436c15b012d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reinitialize driver.  <a href="#a706888c1788f8116952db436c15b012d">More...</a><br /></td></tr>
+<tr class="separator:a706888c1788f8116952db436c15b012d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4e7f1b2496140c5d14554fa02f2f805e"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a4e7f1b2496140c5d14554fa02f2f805e">available</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
 <tr class="memdesc:a4e7f1b2496140c5d14554fa02f2f805e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of bytes available to <a class="el" href="namespaceGSM.html#a34e98b6cd925f17ceae01f490aebea97" title="Read bytes from the rx ring buffer.">read()</a>.  <a href="#a4e7f1b2496140c5d14554fa02f2f805e">More...</a><br /></td></tr>
 <tr class="separator:a4e7f1b2496140c5d14554fa02f2f805e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a34e98b6cd925f17ceae01f490aebea97"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a34e98b6cd925f17ceae01f490aebea97">read</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, uint8_t *<a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#aaba88b24a21a6c70c895c0d55f4a69a0">size</a>)</td></tr>
+<tr class="memitem:a34e98b6cd925f17ceae01f490aebea97"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a34e98b6cd925f17ceae01f490aebea97">read</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, uint8_t *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>)</td></tr>
 <tr class="memdesc:a34e98b6cd925f17ceae01f490aebea97"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read bytes from the rx ring buffer.  <a href="#a34e98b6cd925f17ceae01f490aebea97">More...</a><br /></td></tr>
 <tr class="separator:a34e98b6cd925f17ceae01f490aebea97"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae6df624828ba10961a723c64c858b4f0"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#ae6df624828ba10961a723c64c858b4f0">write</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const uint8_t *<a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#aaba88b24a21a6c70c895c0d55f4a69a0">size</a>)</td></tr>
-<tr class="memdesc:ae6df624828ba10961a723c64c858b4f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write bytes to the TCP socket.  <a href="#ae6df624828ba10961a723c64c858b4f0">More...</a><br /></td></tr>
-<tr class="separator:ae6df624828ba10961a723c64c858b4f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a647c69c93eaadc3fd37fc2763557dfed"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a647c69c93eaadc3fd37fc2763557dfed">connect_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *<a class="el" href="NovaGSM_8cpp.html#ab5451cef4a73e2304f34e6c54824d02e">host</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#a8e0798404bf2cf5dabb84c5ba9a4f236">port</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
+<tr class="memitem:abe9a36c518c8f0d5d0219ce8cec55fc9"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#abe9a36c518c8f0d5d0219ce8cec55fc9">write</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const uint8_t *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>)</td></tr>
+<tr class="memdesc:abe9a36c518c8f0d5d0219ce8cec55fc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stages bytes to the tx ring buffer.  <a href="#abe9a36c518c8f0d5d0219ce8cec55fc9">More...</a><br /></td></tr>
+<tr class="separator:abe9a36c518c8f0d5d0219ce8cec55fc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a647c69c93eaadc3fd37fc2763557dfed"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a647c69c93eaadc3fd37fc2763557dfed">connect_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *host, uint16_t port, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
 <tr class="memdesc:a647c69c93eaadc3fd37fc2763557dfed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wait for TCP connection to be established.  <a href="#a647c69c93eaadc3fd37fc2763557dfed">More...</a><br /></td></tr>
 <tr class="separator:a647c69c93eaadc3fd37fc2763557dfed"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae1d80063403e69cd1cbabdf1062fce1e"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#ae1d80063403e69cd1cbabdf1062fce1e">read_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, uint8_t *<a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#aaba88b24a21a6c70c895c0d55f4a69a0">size</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
-<tr class="memdesc:ae1d80063403e69cd1cbabdf1062fce1e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wait until size bytes are available before reading them.  <a href="#ae1d80063403e69cd1cbabdf1062fce1e">More...</a><br /></td></tr>
+<tr class="memitem:ae1d80063403e69cd1cbabdf1062fce1e"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#ae1d80063403e69cd1cbabdf1062fce1e">read_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, uint8_t *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
+<tr class="memdesc:ae1d80063403e69cd1cbabdf1062fce1e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Synchronously reads bytes into a data buffer.  <a href="#ae1d80063403e69cd1cbabdf1062fce1e">More...</a><br /></td></tr>
 <tr class="separator:ae1d80063403e69cd1cbabdf1062fce1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4dac8c55e330b07ab104ec361a084422"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a4dac8c55e330b07ab104ec361a084422">write_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const uint8_t *<a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#aaba88b24a21a6c70c895c0d55f4a69a0">size</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
-<tr class="memdesc:a4dac8c55e330b07ab104ec361a084422"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write bytes to the TCP socket and block until it sends.  <a href="#a4dac8c55e330b07ab104ec361a084422">More...</a><br /></td></tr>
-<tr class="separator:a4dac8c55e330b07ab104ec361a084422"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2599e45788dc0a0656aafc40748fb37b"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a2599e45788dc0a0656aafc40748fb37b">read</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, char *<a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#aaba88b24a21a6c70c895c0d55f4a69a0">size</a>)</td></tr>
-<tr class="memdesc:a2599e45788dc0a0656aafc40748fb37b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read bytes into a c-string.  <a href="#a2599e45788dc0a0656aafc40748fb37b">More...</a><br /></td></tr>
+<tr class="memitem:a776c3e7d84ceb8986e0e2d7dff984b37"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a776c3e7d84ceb8986e0e2d7dff984b37">write_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const uint8_t *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
+<tr class="memdesc:a776c3e7d84ceb8986e0e2d7dff984b37"><td class="mdescLeft">&#160;</td><td class="mdescRight">Synchronously stages bytes to the tx ring buffer.  <a href="#a776c3e7d84ceb8986e0e2d7dff984b37">More...</a><br /></td></tr>
+<tr class="separator:a776c3e7d84ceb8986e0e2d7dff984b37"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2599e45788dc0a0656aafc40748fb37b"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a2599e45788dc0a0656aafc40748fb37b">read</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, char *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>)</td></tr>
+<tr class="memdesc:a2599e45788dc0a0656aafc40748fb37b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read bytes from the rx ring buffer into a c-string.  <a href="#a2599e45788dc0a0656aafc40748fb37b">More...</a><br /></td></tr>
 <tr class="separator:a2599e45788dc0a0656aafc40748fb37b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad109b08aca1388a71a5310076ccb1ccd"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#ad109b08aca1388a71a5310076ccb1ccd">write</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *<a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#aaba88b24a21a6c70c895c0d55f4a69a0">size</a>)</td></tr>
-<tr class="memdesc:ad109b08aca1388a71a5310076ccb1ccd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write a c-string to the TCP socket.  <a href="#ad109b08aca1388a71a5310076ccb1ccd">More...</a><br /></td></tr>
-<tr class="separator:ad109b08aca1388a71a5310076ccb1ccd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8a6e91831e9d4bd811c97351736bc6ca"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a8a6e91831e9d4bd811c97351736bc6ca">write</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, uint8_t <a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>)</td></tr>
-<tr class="memdesc:a8a6e91831e9d4bd811c97351736bc6ca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write a byte to the TCP socket.  <a href="#a8a6e91831e9d4bd811c97351736bc6ca">More...</a><br /></td></tr>
-<tr class="separator:a8a6e91831e9d4bd811c97351736bc6ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1ad8dff30e72cabc3f8700de7eac0075"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a1ad8dff30e72cabc3f8700de7eac0075">read_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, char *<a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#aaba88b24a21a6c70c895c0d55f4a69a0">size</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
-<tr class="memdesc:a1ad8dff30e72cabc3f8700de7eac0075"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wait until size bytes are available before reading them into a c-string.  <a href="#a1ad8dff30e72cabc3f8700de7eac0075">More...</a><br /></td></tr>
+<tr class="memitem:aa2a74fc9c0bb98314caa1c3c2dabba61"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#aa2a74fc9c0bb98314caa1c3c2dabba61">write</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>)</td></tr>
+<tr class="memdesc:aa2a74fc9c0bb98314caa1c3c2dabba61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stages a c-string to the tx ring buffer.  <a href="#aa2a74fc9c0bb98314caa1c3c2dabba61">More...</a><br /></td></tr>
+<tr class="separator:aa2a74fc9c0bb98314caa1c3c2dabba61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1ad8dff30e72cabc3f8700de7eac0075"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a1ad8dff30e72cabc3f8700de7eac0075">read_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, char *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
+<tr class="memdesc:a1ad8dff30e72cabc3f8700de7eac0075"><td class="mdescLeft">&#160;</td><td class="mdescRight">Synchronously reads bytes into a c-string.  <a href="#a1ad8dff30e72cabc3f8700de7eac0075">More...</a><br /></td></tr>
 <tr class="separator:a1ad8dff30e72cabc3f8700de7eac0075"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acac482bb8c5b33297d1526c4d759033a"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#acac482bb8c5b33297d1526c4d759033a">write_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *<a class="el" href="NovaGSM_8cpp.html#a0d65d2f2b12b13099dcf6ca1a6facaeb">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#aaba88b24a21a6c70c895c0d55f4a69a0">size</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
-<tr class="memdesc:acac482bb8c5b33297d1526c4d759033a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write a c-string the TCP socket and block until it sends.  <a href="#acac482bb8c5b33297d1526c4d759033a">More...</a><br /></td></tr>
-<tr class="separator:acac482bb8c5b33297d1526c4d759033a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae75e4521fc49c772170c9fd8921ffa03"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#ae75e4521fc49c772170c9fd8921ffa03">write_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
+<tr class="memdesc:ae75e4521fc49c772170c9fd8921ffa03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Synchronously stages a c-string to the tx ring buffer.  <a href="#ae75e4521fc49c772170c9fd8921ffa03">More...</a><br /></td></tr>
+<tr class="separator:ae75e4521fc49c772170c9fd8921ffa03"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p class="">Handles buffered communication through a GSM/GPRS modem. </p>
@@ -218,8 +214,6 @@ Functions</h2></td></tr>
 <tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e"></a>authenticating&#160;</td><td class="fielddoc"><p class="">Attempting to authenticate with GPRS. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7"></a>ready&#160;</td><td class="fielddoc"><p class="">Connected to GPRS. </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7a19483675c94dd990882c3c65a5a6edbe"></a>handshaking&#160;</td><td class="fielddoc"><p class="">Attempting to establish TCP connection. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb"></a>idle&#160;</td><td class="fielddoc"><p class="">TCP socket is ready and idle. </p>
 </td></tr>
@@ -283,7 +277,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00929">929</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00892">892</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -312,7 +306,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01023">1023</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01061">1061</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -332,7 +326,7 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Clears the rx ring buffer. </p>
+<p>Discards unread data in the rx ring buffer. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -341,7 +335,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>-EINVAL if ctx is null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00993">993</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00986">986</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -377,8 +371,8 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Set the TCP connection information. </p>
-<p class="">Must be called before driver can transition from <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a>.</p>
+<p>Open a TCP socket. </p>
+<p class="">Must be in State::connected, transitions to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -387,9 +381,19 @@ Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
+<dd>
+-ENODEV if the device is not responsive. </dd>
+<dd>
+-ENETUNREACH if the network is not available. </dd>
+<dd>
+-ENOTCONN if GPRS is not connected. </dd>
+<dd>
+-EADDRINUSE if a socket is already open. </dd>
+<dd>
+-ENOBUFS if command buffer is full. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00942">942</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00905">905</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -448,7 +452,7 @@ Functions</h2></td></tr>
 <dd>
 -ETIME if the connect times out. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01095">1095</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01107">1107</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -477,7 +481,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00870">870</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00863">863</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -506,7 +510,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes context can be statically cast to <a class="el" href="structGSM_1_1context__t.html" title="Defines resources and callbacks used by the driver.">context_t</a>; </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00173">173</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00169">169</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -543,7 +547,7 @@ Functions</h2></td></tr>
 <dd>
 -ENOBUFS if command buffer is full. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00954">954</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00948">948</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -573,7 +577,7 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Flushes the command buffer. </p>
+<p>Blocks until all bytes in the tx ring buffer have been sent or timeout. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -585,7 +589,7 @@ Functions</h2></td></tr>
 <dd>
 -ETIME if timeout is reached. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01005">1005</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00998">998</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -614,7 +618,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes context can be statically cast to <a class="el" href="structGSM_1_1context__t.html" title="Defines resources and callbacks used by the driver.">context_t</a>; </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00154">154</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00162">162</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -644,19 +648,18 @@ Functions</h2></td></tr>
 <dl class="section warning"><dt>Warning</dt><dd>assumes context can be statically cast to <a class="el" href="structGSM_1_1context__t.html" title="Defines resources and callbacks used by the driver.">context_t</a>; </dd></dl>
 <p class="">The process loop handles communication with the modem and transitions between device states. If there is not a command already awaiting a response then the next command in the buffer is sent. Responses are handled based on the <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7" title="State of the device.">GSM::State</a>. Any pending packets that exceed their timeout value are discarded and the error counter incremented. <br />
  If the error counter exceeds MAX_ERRORS the modem is assumed to be MIA and the driver returns to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a334c4a4c42fdb79d7ebc3e73b517e6f8" title="None.">State::none</a>. The error counter is reset whenever a response is received.</p>
-<p class="">If the signal is lost the connection is assumed to be broken and the driver returns to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a>. The user must call <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> and <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Set the TCP connection information.">connect()</a> again to re-establish.</p>
+<p class="">If the signal is lost the connection is assumed to be broken and the driver returns to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a>. The user must call <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> and <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> again to re-establish.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a334c4a4c42fdb79d7ebc3e73b517e6f8" title="None.">State::none</a> - wait for the modem to respond to an ATI query and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ae37f0136aa3ffaf149b351f6a4c948e9" title="SIM is being initialized.">State::init</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ae37f0136aa3ffaf149b351f6a4c948e9" title="SIM is being initialized.">State::init</a> - query the SIM card and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a> or <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a4cef2f30ac7d33419d00c1d93a090095" title="SIM is locked.">State::locked</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a4cef2f30ac7d33419d00c1d93a090095" title="SIM is locked.">State::locked</a> - SIM is locked, call <a class="el" href="namespaceGSM.html#a728def5272912aeb6e1ddd20d5b3cdf4" title="Unlocks the SIM card.">unlock()</a> with the password to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a> - wait for a signal and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a> - registered on network, wait for <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e" title="Attempting to authenticate with GPRS.">State::authenticating</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e" title="Attempting to authenticate with GPRS.">State::authenticating</a> - handle <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> on success.</p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> - ready to GPRS, wait for <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Set the TCP connection information.">connect()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a19483675c94dd990882c3c65a5a6edbe" title="Attempting to establish TCP connection.">State::handshaking</a>.</p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a19483675c94dd990882c3c65a5a6edbe" title="Attempting to establish TCP connection.">State::handshaking</a> - handle <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Set the TCP connection information.">connect()</a> and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> on success.</p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> - socket is established, handle <a class="el" href="namespaceGSM.html#ae6df624828ba10961a723c64c858b4f0" title="Write bytes to the TCP socket.">write()</a> and wait for socket rx data to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a></p>
+<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> - ready to GPRS, wait for <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a>.</p>
+<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> - socket is established, handle <a class="el" href="namespaceGSM.html#abe9a36c518c8f0d5d0219ce8cec55fc9" title="Stages bytes to the tx ring buffer.">write()</a> and wait for socket rx data to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a></p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a> - read socket data into the rx ring buffer and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a>. </p>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00179">179</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00175">175</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -700,7 +703,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Read bytes into a c-string. </p>
+<p>Read bytes from the rx ring buffer into a c-string. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -711,7 +714,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00180">180</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00184">184</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
 
 </div>
 </div>
@@ -759,7 +762,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01029">1029</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01067">1067</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -809,7 +812,8 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Wait until size bytes are available before reading them into a c-string. </p>
+<p>Synchronously reads bytes into a c-string. </p>
+<p class="">Blocks until 'size' bytes are read or timeout.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -821,7 +825,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00261">261</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00242">242</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
 
 </div>
 </div>
@@ -863,7 +867,8 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Wait until size bytes are available before reading them. </p>
+<p>Synchronously reads bytes into a data buffer. </p>
+<p class="">Blocks until 'size' bytes are read or timeout.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -875,7 +880,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01117">1117</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01129">1129</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -905,7 +910,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>-EINVAL if ctx is null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00882">882</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01016">1016</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -936,7 +941,7 @@ Functions</h2></td></tr>
 <dd>
 assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00876">876</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00869">869</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -965,7 +970,7 @@ assumes ctx is not null. </dd></dl>
 </dl>
 <dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00864">864</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00857">857</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
@@ -1008,12 +1013,12 @@ assumes ctx is not null. </dd></dl>
 <dd>
 -ENOBUFS if command buffer is full. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00912">912</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l00875">875</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
-<a id="ad109b08aca1388a71a5310076ccb1ccd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad109b08aca1388a71a5310076ccb1ccd">&#9670;&nbsp;</a></span>write() <span class="overload">[1/3]</span></h2>
+<a id="aa2a74fc9c0bb98314caa1c3c2dabba61"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa2a74fc9c0bb98314caa1c3c2dabba61">&#9670;&nbsp;</a></span>write() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1022,7 +1027,7 @@ assumes ctx is not null. </dd></dl>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">int GSM::write </td>
+          <td class="memname">uint16_t GSM::write </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structGSM_1_1context__t.html">context_t</a> *&#160;</td>
           <td class="paramname"><em>ctx</em>, </td>
@@ -1052,8 +1057,7 @@ assumes ctx is not null. </dd></dl>
 </table>
 </div><div class="memdoc">
 
-<p>Write a c-string to the TCP socket. </p>
-<p class="">Must be in <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> or <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a></p>
+<p>Stages a c-string to the tx ring buffer. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -1062,85 +1066,20 @@ assumes ctx is not null. </dd></dl>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
-<dd>
--ENODEV if the device is not responsive. </dd>
-<dd>
--ENETUNREACH if the network is not available. </dd>
-<dd>
--ENOSTR if the socket is not open for streaming. </dd>
-<dd>
--ENOBUFS if command buffer is full. </dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00211">211</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00203">203</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
 
 </div>
 </div>
-<a id="a8a6e91831e9d4bd811c97351736bc6ca"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8a6e91831e9d4bd811c97351736bc6ca">&#9670;&nbsp;</a></span>write() <span class="overload">[2/3]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">int GSM::write </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="structGSM_1_1context__t.html">context_t</a> *&#160;</td>
-          <td class="paramname"><em>ctx</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">uint8_t&#160;</td>
-          <td class="paramname"><em>data</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Write a byte to the TCP socket. </p>
-<p class="">Must be in <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> or <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a></p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">data</td><td>byte to write. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
-<dd>
--ENODEV if the device is not responsive. </dd>
-<dd>
--ENETUNREACH if the network is not available. </dd>
-<dd>
--ENOSTR if the socket is not connect for streaming. </dd>
-<dd>
--ENOBUFS if command buffer is full. </dd></dl>
-
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00226">226</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
-
-</div>
-</div>
-<a id="ae6df624828ba10961a723c64c858b4f0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae6df624828ba10961a723c64c858b4f0">&#9670;&nbsp;</a></span>write() <span class="overload">[3/3]</span></h2>
+<a id="abe9a36c518c8f0d5d0219ce8cec55fc9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abe9a36c518c8f0d5d0219ce8cec55fc9">&#9670;&nbsp;</a></span>write() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int GSM::write </td>
+          <td class="memname">uint16_t GSM::write </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structGSM_1_1context__t.html">context_t</a> *&#160;</td>
           <td class="paramname"><em>ctx</em>, </td>
@@ -1165,8 +1104,7 @@ assumes ctx is not null. </dd></dl>
       </table>
 </div><div class="memdoc">
 
-<p>Write bytes to the TCP socket. </p>
-<p class="">Must be in <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> or <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a></p>
+<p>Stages bytes to the tx ring buffer. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -1175,22 +1113,14 @@ assumes ctx is not null. </dd></dl>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
-<dd>
--ENODEV if the device is not responsive. </dd>
-<dd>
--ENETUNREACH if the network is not available. </dd>
-<dd>
--ENOSTR if the socket is not open for streaming. </dd>
-<dd>
--ENOBUFS if command buffer is full. </dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01045">1045</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01085">1085</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>
-<a id="acac482bb8c5b33297d1526c4d759033a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acac482bb8c5b33297d1526c4d759033a">&#9670;&nbsp;</a></span>write_sync() <span class="overload">[1/2]</span></h2>
+<a id="ae75e4521fc49c772170c9fd8921ffa03"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae75e4521fc49c772170c9fd8921ffa03">&#9670;&nbsp;</a></span>write_sync() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1199,7 +1129,7 @@ assumes ctx is not null. </dd></dl>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">int GSM::write_sync </td>
+          <td class="memname">uint16_t GSM::write_sync </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structGSM_1_1context__t.html">context_t</a> *&#160;</td>
           <td class="paramname"><em>ctx</em>, </td>
@@ -1235,8 +1165,8 @@ assumes ctx is not null. </dd></dl>
 </table>
 </div><div class="memdoc">
 
-<p>Write a c-string the TCP socket and block until it sends. </p>
-<p class="">Must be in <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> or <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a></p>
+<p>Synchronously stages a c-string to the tx ring buffer. </p>
+<p class="">Blocks until 'size' bytes are staged or timeout.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -1246,28 +1176,20 @@ assumes ctx is not null. </dd></dl>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
-<dd>
--ENODEV if the device is not responsive. </dd>
-<dd>
--ENETUNREACH if the network is not available. </dd>
-<dd>
--ENOSTR if the socket is not connect for streaming. </dd>
-<dd>
--ETIME if the write times out. </dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00294">294</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8h_source.html#l00267">267</a> of file <a class="el" href="NovaGSM_8h_source.html">NovaGSM.h</a>.</p>
 
 </div>
 </div>
-<a id="a4dac8c55e330b07ab104ec361a084422"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4dac8c55e330b07ab104ec361a084422">&#9670;&nbsp;</a></span>write_sync() <span class="overload">[2/2]</span></h2>
+<a id="a776c3e7d84ceb8986e0e2d7dff984b37"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a776c3e7d84ceb8986e0e2d7dff984b37">&#9670;&nbsp;</a></span>write_sync() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int GSM::write_sync </td>
+          <td class="memname">uint16_t GSM::write_sync </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structGSM_1_1context__t.html">context_t</a> *&#160;</td>
           <td class="paramname"><em>ctx</em>, </td>
@@ -1298,8 +1220,8 @@ assumes ctx is not null. </dd></dl>
       </table>
 </div><div class="memdoc">
 
-<p>Write bytes to the TCP socket and block until it sends. </p>
-<p class="">Must be in <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> or <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a></p>
+<p>Synchronously stages bytes to the tx ring buffer. </p>
+<p class="">Blocks until 'size' bytes are staged or timeout.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -1309,17 +1231,9 @@ assumes ctx is not null. </dd></dl>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
-<dd>
--ENODEV if the device is not responsive. </dd>
-<dd>
--ENETUNREACH if the network is not available. </dd>
-<dd>
--ENOSTR if the socket is not connect for streaming. </dd>
-<dd>
--ETIME if the write times out. </dd></dl>
+<dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01144">1144</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="NovaGSM_8cpp_source.html#l01158">1158</a> of file <a class="el" href="NovaGSM_8cpp_source.html">NovaGSM.cpp</a>.</p>
 
 </div>
 </div>

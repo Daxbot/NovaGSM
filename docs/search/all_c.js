@@ -2,7 +2,6 @@ var searchData=
 [
   ['pending',['pending',['../NovaGSM_8cpp.html#a4168049b335be1db8f05d2556418710a',1,'NovaGSM.cpp']]],
   ['pool',['pool',['../NovaGSM_8cpp.html#a608588ad11d26438c60f2613836f0daa',1,'NovaGSM.cpp']]],
-  ['port',['port',['../NovaGSM_8cpp.html#a8e0798404bf2cf5dabb84c5ba9a4f236',1,'NovaGSM.cpp']]],
   ['priv',['priv',['../structGSM_1_1context__t.html#aa9be794e55e9f6f915e22f0c62627482',1,'GSM::context_t']]],
   ['process',['process',['../namespaceGSM.html#a4f86277f6c812c86453c979fbeb6c43f',1,'GSM']]],
   ['pwd',['pwd',['../NovaGSM_8cpp.html#acaa8452172c4373c4d366309b292504c',1,'NovaGSM.cpp']]]

@@ -76,7 +76,7 @@ $(function() {
 <li>be non-blocking</li>
 </ul>
 <h2>Description</h2>
-<p class="">This driver attempts to establish communication with a GSM/GPRS modem using standard AT commands. When the device is identified use <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Set the TCP connection information.">connect()</a> to authenticate with GPRS and open() establish a TCP stream.</p>
+<p class="">This driver attempts to establish communication with a GSM/GPRS modem using standard AT commands. When the device is identified use <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> to authenticate with GPRS and open() establish a TCP stream.</p>
 <p class="">Once a socket is open data can be sent or recieved using a standard read/write/available interface. An internal ring buffer is used to receive data, and a pre-allocated pool of packets is used to queue commands to sent to the device. This allows the driver to be completely non-blocking without relying on complicated callbacks.</p>
 <p class="">The <a class="el" href="namespaceGSM.html#a4f86277f6c812c86453c979fbeb6c43f" title="Handle communication with the modem.">process()</a> state machine is below, descriptions of states can be found <a href="https://daxbot.github.io/NovaGSM/namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7">here</a> </p><div class="image">
 <img src="https://daxbot.github.io/NovaGSM/dot_inline_dotgraph_1.png" alt="process() state machine"/>

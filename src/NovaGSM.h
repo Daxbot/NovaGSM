@@ -35,7 +35,6 @@ namespace GSM
         online,         /**< Network registers the modem. */
         authenticating, /**< Attempting to authenticate with GPRS. */
         ready,          /**< Connected to GPRS. */
-        handshaking,    /**< Attempting to establish TCP connection. */
         idle,           /**< TCP socket is ready and idle. */
         busy,           /**< TCP socket is ready and busy. */
     };
@@ -83,15 +82,6 @@ namespace GSM
      */
     uint8_t signal(context_t *ctx);
 
-    /** Reinitialize driver.
-     *
-     * Resets the context and transitions to State::none.
-     *
-     * @param [in] ctx driver operating context.
-     * @return -EINVAL if ctx is null.
-     */
-    int reset(context_t *ctx);
-
      /** Unlocks the SIM card.
      *
      * Must be in State::locked.
@@ -115,14 +105,19 @@ namespace GSM
      */
     int authenticate(context_t *ctx, const char *apn, const char *user="", const char *pwd="");
 
-    /** Set the TCP connection information.
+    /** Open a TCP socket.
      *
-     * Must be called before driver can transition from State::ready to State::idle.
+     * Must be in State::connected, transitions to State::idle.
      *
      * @param [in] ctx driver operating context.
      * @param [in] host server ip address.
      * @param [in] port server port number.
      * @return -EINVAL if inputs are null.
+     * @return -ENODEV if the device is not responsive.
+     * @return -ENETUNREACH if the network is not available.
+     * @return -ENOTCONN if GPRS is not connected.
+     * @return -EADDRINUSE if a socket is already open.
+     * @return -ENOBUFS if command buffer is full.
      */
     int connect(context_t *ctx, const char *host, uint16_t port);
 
@@ -137,14 +132,14 @@ namespace GSM
      */
     int disconnect(context_t *ctx);
 
-    /** Clears the rx ring buffer.
+    /** Discards unread data in the rx ring buffer.
      *
      * @param [in] ctx driver operating context.
      * @return -EINVAL if ctx is null.
      */
     int clear(context_t *ctx);
 
-    /** Flushes the command buffer.
+    /** Blocks until all bytes in the tx ring buffer have been sent or timeout.
      * 
      * @param [in] ctx driver operating context.
      * @param [in] timeout_ms maximum milliseconds to wait (0 for infinite).
@@ -152,6 +147,15 @@ namespace GSM
      * @return -ETIME if timeout is reached.
      */
     int flush(context_t *ctx, uint32_t timeout_ms=0);
+
+    /** Reinitialize driver.
+     *
+     * Resets the context and transitions to State::none.
+     *
+     * @param [in] ctx driver operating context.
+     * @return -EINVAL if ctx is null.
+     */
+    int reset(context_t *ctx);
 
     /** Number of bytes available to read().
      *
@@ -170,7 +174,7 @@ namespace GSM
      */
     uint16_t read(context_t *ctx, uint8_t *data, uint16_t size);
 
-    /** Read bytes into a c-string.
+    /** Read bytes from the rx ring buffer into a c-string.
      *
      * @param [in] ctx driver operating context.
      * @param [out] data buffer to read into.
@@ -180,52 +184,25 @@ namespace GSM
     inline uint16_t read(context_t *ctx, char *data, uint16_t size)
         { return read(ctx, (uint8_t *)data, size); };
     
-    /** Write bytes to the TCP socket.
-     *
-     * Must be in State::idle or State::busy
+    /** Stages bytes to the tx ring buffer.
      *
      * @param [in] ctx driver operating context.
      * @param [in] data buffer to write.
      * @param [in] size number of bytes to write.
-     * @return -EINVAL if inputs are null.
-     * @return -ENODEV if the device is not responsive.
-     * @return -ENETUNREACH if the network is not available.
-     * @return -ENOSTR if the socket is not open for streaming.
-     * @return -ENOBUFS if command buffer is full.
+     * @warning assumes ctx is not null.
      */
-    int write(context_t *ctx, const uint8_t *data, uint16_t size);
+    uint16_t write(context_t *ctx, const uint8_t *data, uint16_t size);
 
-    /** Write a c-string to the TCP socket.
-     *
-     * Must be in State::idle or State::busy
+    /** Stages a c-string to the tx ring buffer.
      *
      * @param [in] ctx driver operating context.
      * @param [in] data string to write.
      * @param [in] size length of string.
-     * @return -EINVAL if inputs are null.
-     * @return -ENODEV if the device is not responsive.
-     * @return -ENETUNREACH if the network is not available.
-     * @return -ENOSTR if the socket is not open for streaming.
-     * @return -ENOBUFS if command buffer is full.
+     * @warning assumes ctx is not null.
      */
-    inline int write(context_t *ctx, const char *data, uint16_t size)
+    inline uint16_t write(context_t *ctx, const char *data, uint16_t size)
         { return write(ctx, (uint8_t *)data, size); };
 
-     /** Write a byte to the TCP socket.
-     *
-     * Must be in State::idle or State::busy
-     *
-     * @param [in] ctx driver operating context.
-     * @param [in] data byte to write.
-     * @return -EINVAL if inputs are null.
-     * @return -ENODEV if the device is not responsive.
-     * @return -ENETUNREACH if the network is not available.
-     * @return -ENOSTR if the socket is not connect for streaming.
-     * @return -ENOBUFS if command buffer is full.
-     */
-    inline int write(context_t *ctx, uint8_t data)
-        { return write(ctx, &data, 1); };
-    
     /** Wait for TCP connection to be established.
      *
      * Must call authenticate() first.
@@ -240,8 +217,10 @@ namespace GSM
      */
     int connect_sync(context_t *ctx, const char *host, uint16_t port, uint32_t timeout_ms=0);
     
-    /** Wait until size bytes are available before reading them.
+    /** Synchronously reads bytes into a data buffer.
      *
+     * Blocks until 'size' bytes are read or timeout.
+     * 
      * @param [in] ctx driver operating context.
      * @param [out] data buffer to read into.
      * @param [in] size number of bytes to read.
@@ -250,7 +229,9 @@ namespace GSM
      */
     uint16_t read_sync(context_t *ctx, uint8_t *data, uint16_t size, uint32_t timeout_ms=0);
 
-    /** Wait until size bytes are available before reading them into a c-string.
+    /** Synchronously reads bytes into a c-string.
+     * 
+     * Blocks until 'size' bytes are read or timeout.
      *
      * @param [in] ctx driver operating context.
      * @param [out] data buffer to read into.
@@ -261,37 +242,29 @@ namespace GSM
     inline uint16_t read_sync(context_t *ctx, char *data, uint16_t size, uint32_t timeout_ms=0)
         { return read_sync(ctx, (uint8_t *)data, size, timeout_ms); };
 
-    /** Write bytes to the TCP socket and block until it sends.
+    /** Synchronously stages bytes to the tx ring buffer.
      *
-     * Must be in State::idle or State::busy
+     * Blocks until 'size' bytes are staged or timeout.
      *
      * @param [in] ctx driver operating context.
      * @param [in] data buffer to write.
      * @param [in] size number of bytes to write.
      * @param [in] timeout_ms maximum milliseconds to wait (0 for infinite).
-     * @return -EINVAL if inputs are null.
-     * @return -ENODEV if the device is not responsive.
-     * @return -ENETUNREACH if the network is not available.
-     * @return -ENOSTR if the socket is not connect for streaming.
-     * @return -ETIME if the write times out.
+     * @warning assumes ctx is not null.
      */
-    int write_sync(context_t *ctx, const uint8_t *data, uint16_t size, uint32_t timeout_ms=0);
+    uint16_t write_sync(context_t *ctx, const uint8_t *data, uint16_t size, uint32_t timeout_ms=0);
 
-    /** Write a c-string the TCP socket and block until it sends.
+    /** Synchronously stages a c-string to the tx ring buffer.
      *
-     * Must be in State::idle or State::busy
+     * Blocks until 'size' bytes are staged or timeout.
      *
      * @param [in] ctx driver operating context.
      * @param [in] data string to write.
      * @param [in] size length of string.
      * @param [in] timeout_ms maximum milliseconds to wait (0 for infinite).
-     * @return -EINVAL if inputs are null.
-     * @return -ENODEV if the device is not responsive.
-     * @return -ENETUNREACH if the network is not available.
-     * @return -ENOSTR if the socket is not connect for streaming.
-     * @return -ETIME if the write times out.
+     * @warning assumes ctx is not null.
      */
-    inline int write_sync(context_t *ctx, const char *data, uint16_t size, uint32_t timeout_ms=0)
+    inline uint16_t write_sync(context_t *ctx, const char *data, uint16_t size, uint32_t timeout_ms=0)
         { return write_sync(ctx, (uint8_t *)data, size, timeout_ms); };
 }
 
