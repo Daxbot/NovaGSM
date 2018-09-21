@@ -763,14 +763,15 @@ namespace GSM
                                 }
                                 command_pop(cmd_buffer);
                             }
-                            else if(strstr(data, "STATE:"))
+                            else if(strstr(data, "STATE"))
                             {
                                 if(strstr(data, "CONNECT OK") == nullptr)
                                 {
                                     GSM_DEBUG("TCP socket disconnected.\r\n", 26);
                                     modem->state = State::ready;
+                                    command_clear(cmd_buffer);
                                 }
-                                command_pop(cmd_buffer);
+                                else command_pop(cmd_buffer);
                             }
                             else if(strstr(data, "ALREADY CONNECT"))
                                 command_pop(cmd_buffer);
