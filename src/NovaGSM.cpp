@@ -265,13 +265,13 @@ namespace GSM
                 {
                     if(ctx->available())
                     {
-                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size++];
+                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size];
 
                         ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(cmd_buffer->pending->data);
-                            data[cmd_buffer->pending->size] = '\0';
+                            data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
                             if(strstr(data, "+CPIN: SIM PIN")
@@ -295,10 +295,12 @@ namespace GSM
                                     command_pop(cmd_buffer);
                             }
                         }
+                        else if(*pch != '\0')
+                            cmd_buffer->pending->size += 1;
                     }
                     else if((int32_t)(elapsed_ms - cmd_buffer->timer) > 0)
                     {
-                        GSM_DEBUG("Command timeout: ", 16);
+                        GSM_DEBUG("Command timeout: ", 17);
                         GSM_DEBUG((char*)cmd_buffer->pending->data, cmd_buffer->pending->size);
 
                         if(++modem->errors >= MAX_ERRORS)
@@ -324,13 +326,13 @@ namespace GSM
                 {
                     if(ctx->available())
                     {
-                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size++];
+                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size];
 
                         ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(cmd_buffer->pending->data);
-                            data[cmd_buffer->pending->size] = '\0';
+                            data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
                             if(strstr(data, "+CSQ:"))
@@ -345,10 +347,12 @@ namespace GSM
                                 command_pop(cmd_buffer);
                             }
                         }
+                        else if(*pch != '\0')
+                            cmd_buffer->pending->size += 1;
                     }
                     else if((int32_t)(elapsed_ms - cmd_buffer->timer) > 0)
                     {
-                        GSM_DEBUG("Command timeout: ", 16);
+                        GSM_DEBUG("Command timeout: ", 17);
                         GSM_DEBUG((char*)cmd_buffer->pending->data, cmd_buffer->pending->size);
 
                         if(++modem->errors >= MAX_ERRORS)
@@ -373,13 +377,13 @@ namespace GSM
                 {
                     if(ctx->available())
                     {
-                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size++];
+                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size];
 
                         ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(cmd_buffer->pending->data);
-                            data[cmd_buffer->pending->size] = '\0';
+                            data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
                             if(strstr(data, "+CSQ:"))
@@ -394,10 +398,12 @@ namespace GSM
                                 command_pop(cmd_buffer);
                             }
                         }
+                        else if(*pch != '\0')
+                            cmd_buffer->pending->size += 1;
                     }
                     else if((int32_t)(elapsed_ms - cmd_buffer->timer) > 0)
                     {
-                        GSM_DEBUG("Command timeout: ", 16);
+                        GSM_DEBUG("Command timeout: ", 17);
                         GSM_DEBUG((char*)cmd_buffer->pending->data, cmd_buffer->pending->size);
 
                         if(++modem->errors >= MAX_ERRORS)
@@ -500,13 +506,13 @@ namespace GSM
                 {
                     if(ctx->available())
                     {
-                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size++];
+                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size];
                         ctx->read(pch, 1);
 
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(cmd_buffer->pending->data);
-                            data[cmd_buffer->pending->size] = '\0';
+                            data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
                             if(strstr(data, "ERROR"))
@@ -535,7 +541,7 @@ namespace GSM
                                 {
                                     data = strchr(data, '\n');
                                     sscanf(data+1, "%[^\r]", modem->address);
-                                    GSM_DEBUG("Authentication success.\r\n", 24);
+                                    GSM_DEBUG("Authentication success.\r\n", 25);
 
                                     GSM_DEBUG("Address is: ", 12);
                                     GSM_DEBUG(modem->address, strlen(modem->address));
@@ -558,6 +564,8 @@ namespace GSM
                                     command_pop(cmd_buffer);
                             }
                         }
+                        else if(*pch != '\0')
+                            cmd_buffer->pending->size += 1;
                     }
                 }
                 else
@@ -573,13 +581,13 @@ namespace GSM
                 {
                     if(ctx->available())
                     {
-                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size++];
+                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size];
 
                         ctx->read(pch, 1);
                         if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(cmd_buffer->pending->data);
-                            data[cmd_buffer->pending->size] = '\0';
+                            data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
                             if(strstr(data, "+CSQ:"))
@@ -622,10 +630,12 @@ namespace GSM
                                 command_pop(cmd_buffer);
                             }
                         }
+                        else if(*pch != '\0')
+                            cmd_buffer->pending->size += 1;
                     }
                     else if((int32_t)(elapsed_ms - cmd_buffer->timer) > 0)
                     {
-                        GSM_DEBUG("Command timeout: ", 16);
+                        GSM_DEBUG("Command timeout: ", 17);
                         GSM_DEBUG((char*)cmd_buffer->pending->data, cmd_buffer->pending->size);
 
                         if(++modem->errors >= MAX_ERRORS)
@@ -658,13 +668,13 @@ namespace GSM
                 {
                     if(ctx->available())
                     {
-                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size++];
+                        uint8_t *pch = &cmd_buffer->pending->data[cmd_buffer->pending->size];
 
                         ctx->read(pch, 1);
                         if(*pch == '>')
                         {
                             char *data = reinterpret_cast<char *>(cmd_buffer->pending->data);
-                            data[cmd_buffer->pending->size] = '\0';
+                            data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
                             data = strstr(data, "+CIPSEND=");
@@ -693,7 +703,7 @@ namespace GSM
                         else if(*pch == '\n')
                         {
                             char *data = reinterpret_cast<char *>(cmd_buffer->pending->data);
-                            data[cmd_buffer->pending->size] = '\0';
+                            data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
                             if(strstr(data, "+CIPRXGET: 4"))
@@ -753,24 +763,26 @@ namespace GSM
                                 }
                                 command_pop(cmd_buffer);
                             }
-                            else if(strstr(data, "CLOSED")
-                                 || strstr(data, "CLOSE OK"))
+                            else if(strstr(data, "STATE:"))
                             {
-                                GSM_DEBUG("TCP socket disconnected.\r\n", 20);
-                                modem->state = State::ready;
+                                if(strstr(data, "CONNECT OK") == nullptr)
+                                {
+                                    GSM_DEBUG("TCP socket disconnected.\r\n", 26);
+                                    modem->state = State::ready;
+                                }
                                 command_pop(cmd_buffer);
                             }
-                            else if(strstr(data, "CONNECT OK"))
-                                command_pop(cmd_buffer);
                             else if(strstr(data, "ALREADY CONNECT"))
                                 command_pop(cmd_buffer);
                             else if(strstr(data, "DATA ACCEPT"))
                                 command_pop(cmd_buffer);
                         }
+                        else if(*pch != '\0')
+                            cmd_buffer->pending->size += 1;
                     }
                     else if((int32_t)(elapsed_ms - cmd_buffer->timer) > 0)
                     {
-                        GSM_DEBUG("Command timeout: ", 16);
+                        GSM_DEBUG("Command timeout: ", 17);
                         GSM_DEBUG((char*)cmd_buffer->pending->data, cmd_buffer->pending->size);
 
                         if(++modem->errors >= MAX_ERRORS)
