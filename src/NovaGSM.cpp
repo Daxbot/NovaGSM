@@ -274,25 +274,29 @@ namespace GSM
                             data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
-                            if(strstr(data, "+CPIN: SIM PIN")
-                            || strstr(data, "+CPIN: SIM PUK"))
+                            if(data[cmd_buffer->pending->size - 4] == 'O'
+                            && data[cmd_buffer->pending->size - 3] == 'K')
                             {
-                                GSM_DEBUG("SIM locked.\r\n", 13);
-                                modem->state = State::locked;
-                                command_pop(cmd_buffer);
-                            }
-                            else if(strstr(data, "+CPIN: READY"))
-                            {
-                                GSM_DEBUG("SIM ready.\r\n", 12);
-                                modem->state = State::offline;
-                                command_pop(cmd_buffer);
-                            }
-                            else if(strstr(data, "+CFUN"))
-                            {
-                                // If it ends with 'OK' continue
-                                if(data[cmd_buffer->pending->size - 4] == 'O'
-                                && data[cmd_buffer->pending->size - 3] == 'K')
+                                if(strstr(data, "+CPIN: SIM PIN")
+                                || strstr(data, "+CPIN: SIM PUK"))
+                                {
+                                    GSM_DEBUG("SIM locked.\r\n", 13);
+                                    modem->state = State::locked;
                                     command_pop(cmd_buffer);
+                                }
+                                else if(strstr(data, "+CPIN: READY"))
+                                {
+                                    GSM_DEBUG("SIM ready.\r\n", 12);
+                                    modem->state = State::offline;
+                                    command_pop(cmd_buffer);
+                                }
+                                else if(strstr(data, "+CFUN"))
+                                {
+                                    // If it ends with 'OK' continue
+                                    if(data[cmd_buffer->pending->size - 4] == 'O'
+                                    && data[cmd_buffer->pending->size - 3] == 'K')
+                                        command_pop(cmd_buffer);
+                                }
                             }
                         }
                         else if(*pch != '\0')
@@ -335,10 +339,10 @@ namespace GSM
                             data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
-                            if(strstr(data, "+CSQ:"))
+                            if(data[cmd_buffer->pending->size - 4] == 'O'
+                            && data[cmd_buffer->pending->size - 3] == 'K')
                             {
-                                if(data[cmd_buffer->pending->size - 4] == 'O'
-                                && data[cmd_buffer->pending->size - 3] == 'K')
+                                if(strstr(data, "+CSQ:"))
                                 {
                                     data = strchr(data, ':');
                                     modem->signal = strtoul(data+2, nullptr, 0);
@@ -391,10 +395,10 @@ namespace GSM
                             data[++cmd_buffer->pending->size] = '\0';
                             modem->errors = 0;
 
-                            if(strstr(data, "+CSQ:"))
+                            if(data[cmd_buffer->pending->size - 4] == 'O'
+                            && data[cmd_buffer->pending->size - 3] == 'K')
                             {
-                                if(data[cmd_buffer->pending->size - 4] == 'O'
-                                && data[cmd_buffer->pending->size - 3] == 'K')
+                                if(strstr(data, "+CSQ:"))
                                 {
                                     data = strchr(data, ':');
                                     modem->signal = strtoul(data+2, nullptr, 0);
