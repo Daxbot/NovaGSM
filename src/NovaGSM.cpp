@@ -337,14 +337,18 @@ namespace GSM
 
                             if(strstr(data, "+CSQ:"))
                             {
-                                data = strchr(data, ':');
-                                modem->signal = strtoul(data+2, nullptr, 0);
-                                if(modem->signal != 99)
+                                if(data[cmd_buffer->pending->size - 4] == 'O'
+                                && data[cmd_buffer->pending->size - 3] == 'K')
                                 {
-                                    GSM_DEBUG("Modem online.\r\n", 15);
-                                    modem->state = State::online;
+                                    data = strchr(data, ':');
+                                    modem->signal = strtoul(data+2, nullptr, 0);
+                                    if(modem->signal && modem->signal != 99)
+                                    {
+                                        GSM_DEBUG("Modem online.\r\n", 15);
+                                        modem->state = State::online;
+                                    }
+                                    command_pop(cmd_buffer);
                                 }
-                                command_pop(cmd_buffer);
                             }
                         }
                         else if(*pch != '\0')
@@ -366,6 +370,7 @@ namespace GSM
                     // AT+CSQ - signal quality report
                     command_t *command = command_front(cmd_buffer);
                     command->size = sprintf((char*)command->data, "AT+CSQ\r\n");
+                    command->timeout_ms = 1000; // 1 second
                     command_push(cmd_buffer);
 
                     modem->update_timer = elapsed_ms + UPDATE_PERIOD_MS;
@@ -388,14 +393,18 @@ namespace GSM
 
                             if(strstr(data, "+CSQ:"))
                             {
-                                data = strchr(data, ':');
-                                modem->signal = strtoul(data+2, nullptr, 0);
-                                if(modem->signal == 99)
+                                if(data[cmd_buffer->pending->size - 4] == 'O'
+                                && data[cmd_buffer->pending->size - 3] == 'K')
                                 {
-                                    GSM_DEBUG("Modem offline.\r\n", 16);
-                                    modem->state = State::offline;
+                                    data = strchr(data, ':');
+                                    modem->signal = strtoul(data+2, nullptr, 0);
+                                    if(!modem->signal || modem->signal == 99)
+                                    {
+                                        GSM_DEBUG("Modem offline.\r\n", 16);
+                                        modem->state = State::offline;
+                                    }
+                                    command_pop(cmd_buffer);
                                 }
-                                command_pop(cmd_buffer);
                             }
                         }
                         else if(*pch != '\0')
@@ -419,13 +428,13 @@ namespace GSM
                     // AT+CSQ - signal quality report
                     command = command_front(cmd_buffer);
                     command->size = sprintf((char*)command->data, "AT+CSQ\r\n");
+                    command->timeout_ms = 1000; // 1 second
                     command_push(cmd_buffer);
 
                     modem->update_timer = elapsed_ms + UPDATE_PERIOD_MS;
 
                     if(modem->apn[0] != '\0')
                     {
-                        GSM_DEBUG("Authenticating...\r\n", 19);
                         modem->state = State::authenticating;
 
                         // AT+CIPSHUT - deactivate GPRS PDP context
@@ -523,15 +532,19 @@ namespace GSM
                             }
                             else if(strstr(data, "+CSQ:"))
                             {
-                                data = strchr(data, ':');
-                                modem->signal = strtoul(data+2, nullptr, 0);
-                                if(modem->signal == 99)
+                                if(data[cmd_buffer->pending->size - 4] == 'O'
+                                && data[cmd_buffer->pending->size - 3] == 'K')
                                 {
-                                    GSM_DEBUG("Modem offline.\r\n", 16);
-                                    modem->state = State::offline;
-                                    command_clear(cmd_buffer);
+                                    data = strchr(data, ':');
+                                    modem->signal = strtoul(data+2, nullptr, 0);
+                                    if(!modem->signal || modem->signal == 99)
+                                    {
+                                        GSM_DEBUG("Modem offline.\r\n", 16);
+                                        modem->state = State::offline;
+                                        command_clear(cmd_buffer);
+                                    }
+                                    else command_pop(cmd_buffer);
                                 }
-                                else command_pop(cmd_buffer);
                             }
                             else if(strstr(data, "CIFSR"))
                             {
@@ -570,7 +583,6 @@ namespace GSM
                 }
                 else
                 {
-                    GSM_DEBUG("Authentication timeout.\r\n", 25);
                     modem->state = State::online;
                     command_clear(cmd_buffer);
                 }
