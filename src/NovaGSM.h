@@ -9,7 +9,7 @@
 #define NOVAGSM_H_
 
 #include <stdint.h>
-#include <cstring>
+#include <string.h>
 
 /** Handles buffered communication through a GSM/GPRS modem. */
 namespace GSM
@@ -35,8 +35,7 @@ namespace GSM
         online,         /**< Network registers the modem. */
         authenticating, /**< Attempting to authenticate with GPRS. */
         ready,          /**< Connected to GPRS. */
-        idle,           /**< TCP socket is ready and idle. */
-        busy,           /**< TCP socket is ready and busy. */
+        open,           /**< TCP socket is open. */
     };
 
     /** Initialize the driver.
@@ -93,21 +92,26 @@ namespace GSM
      */
     int unlock(context_t *ctx, const char *pin);
 
-    /** Set the GPRS authentication credentials.
+    /** Connect to GPRS.
      *
-     * Must be called before driver can transition from State::online to State::ready.
+     * Must be called in State::online to transition to State::ready.
      *
      * @param [in] ctx driver operating context.
      * @param [in] apn GPRS access point name (max 50 bytes).
      * @param [in] user GPRS user name (max 50 bytes).
      * @param [in] pwd GPRS password (max 50 bytes).
      * @return -EINVAL if inputs are null.
+     * @return -ENODEV if the device is not responding.
+     * @return -ENETUNREACH if the network is not available.
+     * @return -EALREADY if authentication is already in progress.
+     * @return -EISCONN if already connected to GPRS.
+     * @return -ENOBUFS if command buffer is full.
      */
     int authenticate(context_t *ctx, const char *apn, const char *user="", const char *pwd="");
 
     /** Open a TCP socket.
      *
-     * Must be in State::connected, transitions to State::idle.
+     * Must be in State::connected, transitions to State::open.
      *
      * @param [in] ctx driver operating context.
      * @param [in] host server ip address.

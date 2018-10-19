@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['signal',['signal',['../NovaGSM_8cpp.html#a7c1b70b404e83272e560887ddd8daf14',1,'signal():&#160;NovaGSM.cpp'],['../namespaceGSM.html#a5614c46a421c6896115433507c8ffbb9',1,'GSM::signal()']]],
-  ['size',['size',['../NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0',1,'NovaGSM.cpp']]],
-  ['state',['state',['../NovaGSM_8cpp.html#a876b486d3a5241a126bd5751c5f70f79',1,'state():&#160;NovaGSM.cpp'],['../namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7',1,'GSM::State()']]],
-  ['status',['status',['../namespaceGSM.html#a9336e7348a7e1535ed88ef17dece082f',1,'GSM']]]
+  ['tail',['tail',['../NovaGSM_8cpp.html#ace756213e1bd262b8d63eaf28e6249c9',1,'NovaGSM.cpp']]],
+  ['timeout_5fms',['timeout_ms',['../NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944',1,'NovaGSM.cpp']]],
+  ['timer',['timer',['../NovaGSM_8cpp.html#a0d88807102c8d96e37cb4751f0d5a7d3',1,'NovaGSM.cpp']]],
+  ['tx_5fbuffer',['tx_buffer',['../NovaGSM_8cpp.html#aab0d917a1843ee928df103b690406c1b',1,'NovaGSM.cpp']]]
 ];

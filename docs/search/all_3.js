@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['data',['data',['../NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c',1,'NovaGSM.cpp']]],
-  ['deinit',['deinit',['../namespaceGSM.html#adfc6665d147bc2b14c077c18e9beca65',1,'GSM']]],
-  ['disconnect',['disconnect',['../namespaceGSM.html#a302f7aa6a969795bbbef279c9c82f152',1,'GSM']]]
+  ['elapsed_5fms',['elapsed_ms',['../structGSM_1_1context__t.html#a020a568b38704ee9243fa922cabdde54',1,'GSM::context_t']]],
+  ['errors',['errors',['../NovaGSM_8cpp.html#a6f3bf89addb0b7c567e6deb9813fd9b4',1,'NovaGSM.cpp']]]
 ];

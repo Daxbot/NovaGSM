@@ -90,9 +90,7 @@ Enumerations</h2></td></tr>
 &#160;&#160;<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab">State::online</a>, 
 <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e">State::authenticating</a>, 
 <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7">State::ready</a>, 
-<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb">State::idle</a>, 
-<br />
-&#160;&#160;<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7">State::busy</a>
+<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69">State::open</a>
 <br />
  }</td></tr>
 <tr class="memdesc:a4d5250778227b48f8f99b4e290393fa7"><td class="mdescLeft">&#160;</td><td class="mdescRight">State of the device.  <a href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7">More...</a><br /></td></tr>
@@ -121,8 +119,8 @@ Functions</h2></td></tr>
 <tr class="memitem:a728def5272912aeb6e1ddd20d5b3cdf4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a728def5272912aeb6e1ddd20d5b3cdf4">unlock</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *pin)</td></tr>
 <tr class="memdesc:a728def5272912aeb6e1ddd20d5b3cdf4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unlocks the SIM card.  <a href="#a728def5272912aeb6e1ddd20d5b3cdf4">More...</a><br /></td></tr>
 <tr class="separator:a728def5272912aeb6e1ddd20d5b3cdf4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acc2246f99aa28a95f4069d8f1a695595"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595">authenticate</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *<a class="el" href="NovaGSM_8cpp.html#a025796f1c4f4ff980635351de03371fc">apn</a>, const char *<a class="el" href="NovaGSM_8cpp.html#a5a97efddcfa68bd85e60237a585c5c5b">user</a>=&quot;&quot;, const char *<a class="el" href="NovaGSM_8cpp.html#acaa8452172c4373c4d366309b292504c">pwd</a>=&quot;&quot;)</td></tr>
-<tr class="memdesc:acc2246f99aa28a95f4069d8f1a695595"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the GPRS authentication credentials.  <a href="#acc2246f99aa28a95f4069d8f1a695595">More...</a><br /></td></tr>
+<tr class="memitem:acc2246f99aa28a95f4069d8f1a695595"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595">authenticate</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *apn, const char *user=&quot;&quot;, const char *pwd=&quot;&quot;)</td></tr>
+<tr class="memdesc:acc2246f99aa28a95f4069d8f1a695595"><td class="mdescLeft">&#160;</td><td class="mdescRight">Connect to GPRS.  <a href="#acc2246f99aa28a95f4069d8f1a695595">More...</a><br /></td></tr>
 <tr class="separator:acc2246f99aa28a95f4069d8f1a695595"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7c4e0cdf479f8bbabc2e25f928998233"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233">connect</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *host, uint16_t port)</td></tr>
 <tr class="memdesc:a7c4e0cdf479f8bbabc2e25f928998233"><td class="mdescLeft">&#160;</td><td class="mdescRight">Open a TCP socket.  <a href="#a7c4e0cdf479f8bbabc2e25f928998233">More...</a><br /></td></tr>
@@ -215,9 +213,7 @@ Functions</h2></td></tr>
 </td></tr>
 <tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7"></a>ready&#160;</td><td class="fielddoc"><p class="">Connected to GPRS. </p>
 </td></tr>
-<tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb"></a>idle&#160;</td><td class="fielddoc"><p class="">TCP socket is ready and idle. </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7"></a>busy&#160;</td><td class="fielddoc"><p class="">TCP socket is ready and busy. </p>
+<tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69"></a>open&#160;</td><td class="fielddoc"><p class="">TCP socket is open. </p>
 </td></tr>
 </table>
 
@@ -262,8 +258,8 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Set the GPRS authentication credentials. </p>
-<p class="">Must be called before driver can transition from <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a> to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a>.</p>
+<p>Connect to GPRS. </p>
+<p class="">Must be called in <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -273,7 +269,17 @@ Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
+<dd>
+-ENODEV if the device is not responding. </dd>
+<dd>
+-ENETUNREACH if the network is not available. </dd>
+<dd>
+-EALREADY if authentication is already in progress. </dd>
+<dd>
+-EISCONN if already connected to GPRS. </dd>
+<dd>
+-ENOBUFS if command buffer is full. </dd></dl>
 
 </div>
 </div>
@@ -364,7 +370,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Open a TCP socket. </p>
-<p class="">Must be in State::connected, transitions to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a>.</p>
+<p class="">Must be in State::connected, transitions to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69" title="TCP socket is open.">State::open</a>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -426,7 +432,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Wait for TCP connection to be established. </p>
-<p class="">Must call <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> first.</p>
+<p class="">Must call <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Connect to GPRS.">authenticate()</a> first.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
@@ -438,7 +444,7 @@ Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
 <dd>
--EPERM if <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> has not been called. </dd>
+-EPERM if <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Connect to GPRS.">authenticate()</a> has not been called. </dd>
 <dd>
 -ETIME if the connect times out. </dd></dl>
 
@@ -626,16 +632,15 @@ Functions</h2></td></tr>
 <dl class="section warning"><dt>Warning</dt><dd>assumes context can be statically cast to <a class="el" href="structGSM_1_1context__t.html" title="Defines resources and callbacks used by the driver.">context_t</a>; </dd></dl>
 <p class="">The process loop handles communication with the modem and transitions between device states. If there is not a command already awaiting a response then the next command in the buffer is sent. Responses are handled based on the <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7" title="State of the device.">GSM::State</a>. Any pending packets that exceed their timeout value are discarded and the error counter incremented. <br />
  If the error counter exceeds MAX_ERRORS the modem is assumed to be MIA and the driver returns to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a334c4a4c42fdb79d7ebc3e73b517e6f8" title="None.">State::none</a>. The error counter is reset whenever a response is received.</p>
-<p class="">If the signal is lost the connection is assumed to be broken and the driver returns to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a>. The user must call <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> and <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> again to re-establish.</p>
+<p class="">If the signal is lost the connection is assumed to be broken and the driver returns to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a>. The user must call <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Connect to GPRS.">authenticate()</a> and <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> again to re-establish.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a334c4a4c42fdb79d7ebc3e73b517e6f8" title="None.">State::none</a> - wait for the modem to respond to an ATI query and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ae37f0136aa3ffaf149b351f6a4c948e9" title="SIM is being initialized.">State::init</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ae37f0136aa3ffaf149b351f6a4c948e9" title="SIM is being initialized.">State::init</a> - query the SIM card and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a> or <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a4cef2f30ac7d33419d00c1d93a090095" title="SIM is locked.">State::locked</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a4cef2f30ac7d33419d00c1d93a090095" title="SIM is locked.">State::locked</a> - SIM is locked, call <a class="el" href="namespaceGSM.html#a728def5272912aeb6e1ddd20d5b3cdf4" title="Unlocks the SIM card.">unlock()</a> with the password to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a> - wait for a signal and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a>.</p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a> - registered on network, wait for <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e" title="Attempting to authenticate with GPRS.">State::authenticating</a>.</p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e" title="Attempting to authenticate with GPRS.">State::authenticating</a> - handle <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Set the GPRS authentication credentials.">authenticate()</a> and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> on success.</p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> - ready to GPRS, wait for <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a>.</p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a> - socket is established, handle <a class="el" href="namespaceGSM.html#abe9a36c518c8f0d5d0219ce8cec55fc9" title="Stages bytes to the tx ring buffer.">write()</a> and wait for socket rx data to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a></p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a8bc1b2f84252c3df4edd53e4aad097a7" title="TCP socket is ready and busy.">State::busy</a> - read socket data into the rx ring buffer and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7aec2f993aec2c27fc750119ab17b16cdb" title="TCP socket is ready and idle.">State::idle</a>. </p>
+<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a> - registered on network, wait for <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Connect to GPRS.">authenticate()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e" title="Attempting to authenticate with GPRS.">State::authenticating</a>.</p>
+<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e" title="Attempting to authenticate with GPRS.">State::authenticating</a> - handle <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Connect to GPRS.">authenticate()</a> and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> on success.</p>
+<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> - ready to GPRS, wait for <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69" title="TCP socket is open.">State::open</a>.</p>
+<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69" title="TCP socket is open.">State::open</a> - socket is established, handle <a class="el" href="namespaceGSM.html#abe9a36c518c8f0d5d0219ce8cec55fc9" title="Stages bytes to the tx ring buffer.">write()</a> and listen for incoming data </p>
 
 </div>
 </div>
