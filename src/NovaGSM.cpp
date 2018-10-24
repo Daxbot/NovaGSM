@@ -59,12 +59,12 @@ namespace GSM
     namespace // Anonymous
     {
         constexpr uint32_t DEFAULT_TIMEOUT_MS = 200;        /**< Default command timeout milliseconds. */
-        constexpr uint32_t UPDATE_PERIOD_MS = 50;           /**< Default modem update rate. */
+        constexpr uint32_t SEND_PERIOD_MS = 20;             /**< Delay between subsequent commands sent to the modem. */
         constexpr uint16_t BUFFER_SIZE = GSM_BUFFER_SIZE;   /**< Size of the pending data ring buffers. */
         constexpr uint16_t COMMAND_SIZE = 200;              /**< Size of a command data buffer. */
         constexpr uint16_t ID_SIZE = 20;                    /**< Size of the modem ID string buffer. */
         constexpr uint8_t POOL_SIZE = 10;                   /**< Number of pre-allocated command_t structs in the command_buffer_t pool. */
-        constexpr uint8_t MAX_ERRORS = 10;                  /**< Communication errors before modem is considered not connected. */
+        constexpr uint8_t MAX_ERRORS = 20;                  /**< Communication errors before modem is considered not connected. */
 
         #ifdef DEBUG
         uint8_t debug_last_sent[BUFFER_SIZE];
@@ -235,20 +235,25 @@ namespace GSM
                 command_t *pending = cmd_buffer->pending;
                 uint8_t *pch = &pending->data[pending->size];
                 const size_t count = ctx->read(pch, available);;
+                GSM_DEBUG((char *)pch, count);
+
                 pending->size += count;
                 if(pending->size < 4)
                     return;
+
+                // Reset error counter
+                modem->errors = 0;
 
                 switch(modem->state)
                 {
                     case State::none:
                         /** State::none - wait for the modem to respond to an ATI query and transition to State::init. */
-                        if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
+                        pch = static_cast<uint8_t *>(memstr(pending->data, "ATI", pending->size));
+                        if(pch)
                         {
-                            pch = static_cast<uint8_t *>(memstr(pending->data, "ATI", pending->size));
-                            if(pch)
+                            const uint8_t size = pending->size - (pch - pending->data);
+                            if(memstr(pch, "OK\r\n", size))
                             {
-                                const uint8_t size = pending->size - (pch - pending->data);
                                 uint8_t *data_start = static_cast<uint8_t *>(memchr(pch, '\n', size));
                                 uint8_t *data_end = static_cast<uint8_t *>(memchr(data_start+1, '\r', size - (data_start-pch)));
 
@@ -273,9 +278,9 @@ namespace GSM
                                 command->size = sprintf((char*)command->data, "AT&F0\r\n");
                                 command_push(cmd_buffer);
 
-                                // ATE0 - disable command echo
+                                // AT+CIURC=0 - disable unsolicited result codes
                                 command = command_front(cmd_buffer);
-                                command->size = sprintf((char*)command->data, "ATE0\r\n");
+                                command->size = sprintf((char*)command->data, "AT+CIURC=0\r\n");
                                 command_push(cmd_buffer);
 
                                 // AT+CLTS=1 - enable local timestamps
@@ -290,45 +295,39 @@ namespace GSM
                                 command_push(cmd_buffer);
 
                                 modem->state = State::init;
+                                command_pop(cmd_buffer);
                             }
-                            command_pop(cmd_buffer);
                         }
                         break;
                     case State::init:
                         /** State::init - query the SIM card and transition to State::offline or State::locked. */
                     case State::locked:
                         /** State::locked - SIM is locked, call unlock() with the password to transition to State::offline. */
-                        if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
+                        if(memstr(pending->data, "OK\r\n", pending->size))
                         {
-                            pch = static_cast<uint8_t *>(memstr(pending->data, "+CPIN:", pending->size));
-                            if(pch)
+                            // +CPIN: %s\r\nOK\r\n
+                            if(memstr(pending->data, "+CPIN: SIM PIN", pending->size)
+                            || memstr(pending->data, "+CPIN: SIM PUK", pending->size))
                             {
-                                const uint8_t size = pending->size - (pch - pending->data);
-
-                                // +CPIN: %s\r\nOK\r\n
-                                if(memstr(pch, "SIM PIN", size)
-                                || memstr(pch, "SIM PUK", size))
-                                {
-                                    GSM_DEBUG("SIM locked.\r\n", 13);
-                                    modem->state = State::locked;
-                                }
-                                else if(memstr(pch, "READY", size))
-                                {
-                                    GSM_DEBUG("SIM ready.\r\n", 12);
-                                    modem->state = State::offline;
-                                }
+                                GSM_DEBUG("SIM locked.\r\n", 13);
+                                modem->state = State::locked;
+                            }
+                            else if(memstr(pending->data, "+CPIN: READY", pending->size))
+                            {
+                                GSM_DEBUG("SIM ready.\r\n", 12);
+                                modem->state = State::offline;
                             }
                             command_pop(cmd_buffer);
                         }
                         break;
                     case State::offline:
                         /** State::offline - wait for a signal and transition to State::online. */
-                        if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
+                        pch = static_cast<uint8_t *>(memstr(pending->data, "+CREG:", pending->size));
+                        if(pch)
                         {
-                            pch = static_cast<uint8_t *>(memstr(pending->data, "+CREG:", pending->size));
-                            if(pch)
+                            const uint8_t size = pending->size - (pch - pending->data);
+                            if(memstr(pch, "OK\r\n", size))
                             {
-                                const uint8_t size = pending->size - (pch - pending->data);
                                 char const *data = static_cast<char *>(memchr(pch, ',', size));
 
                                 // +CREG: %d,%d,%s,%s\r\nOK\r\n
@@ -342,18 +341,20 @@ namespace GSM
                                     GSM_DEBUG("Modem online.\r\n", 15);
                                     modem->state = State::online;
                                 }
+                                else modem->signal = 99;
+
+                                command_pop(cmd_buffer);
                             }
-                            command_pop(cmd_buffer);
                         }
                         break;
                     case State::online:
                         /** State::online - registered on network, wait for authenticate() to transition to State::authenticating. */
-                        if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
+                        pch = static_cast<uint8_t *>(memstr(pending->data, "+CSQ:", pending->size));
+                        if(pch)
                         {
-                            pch = static_cast<uint8_t *>(memstr(pending->data, "+CSQ:", pending->size));
-                            if(pch)
+                            const uint8_t size = pending->size - (pch - pending->data);
+                            if(memstr(pch, "OK\r\n", size))
                             {
-                                const uint8_t size = pending->size - (pch - pending->data);
                                 char const *data = static_cast<char *>(memchr(pch, ':', size));
 
                                 // +CSQ: %d,%d\r\nOK\r\n
@@ -367,13 +368,13 @@ namespace GSM
                                     GSM_DEBUG("Modem offline.\r\n", 16);
                                     modem->state = State::offline;
                                 }
+                                command_pop(cmd_buffer);
                             }
-                            command_pop(cmd_buffer);
                         }
                         break;
                     case State::authenticating:
                         /** State::authenticating - handle authenticate() and transition to State::ready on success. */
-                        if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
+                        if(memstr(pending->data, "OK\r\n", pending->size))
                         {
                             if(memstr(pending->data, "+CIFSR", pending->size))
                             {
@@ -393,12 +394,28 @@ namespace GSM
                         break;
                     case State::ready:
                         /** State::ready - ready to GPRS, wait for connect() to transition to State::open. */
-                        if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
+                        if(memstr(pending->data, "CONNECT OK", pending->size)
+                        || memstr(pending->data, "ALREADY CONNECT", pending->size))
                         {
-                            pch = static_cast<uint8_t *>(memstr(pending->data, "+CGATT:", pending->size));
-                            if(pch)
+                            GSM_DEBUG("TCP connection established.\r\n", 29);
+                            modem->socket_state = SocketState::idle;
+                            modem->state = State::open;
+                            command_pop(cmd_buffer);
+                            break;
+                        }
+                        else if(memstr(pending->data, "CONNECT FAIL", pending->size))
+                        {
+                            GSM_DEBUG("TCP connection failed.\r\n", 24);
+                            command_pop(cmd_buffer);
+                            break;
+                        }
+
+                        pch = static_cast<uint8_t *>(memstr(pending->data, "+CGATT:", pending->size));
+                        if(pch)
+                        {
+                            const uint8_t size = pending->size - (pch - pending->data);
+                            if(memstr(pch, "OK\r\n", size))
                             {
-                                const uint8_t size = pending->size - (pch - pending->data);
                                 char const *data = static_cast<char *>(memchr(pch, ':', size));
 
                                 // +CGATT: %d\r\nOK\r\n
@@ -421,13 +438,16 @@ namespace GSM
                                     modem->state = State::online;
                                 }
                                 command_pop(cmd_buffer);
-                                break;
                             }
+                            break;
+                        }
 
-                            pch = static_cast<uint8_t *>(memstr(pending->data, "+CSQ:", pending->size));
-                            if(pch)
+                        pch = static_cast<uint8_t *>(memstr(pending->data, "+CSQ:", pending->size));
+                        if(pch)
+                        {
+                            const uint8_t size = pending->size - (pch - pending->data);
+                            if(memstr(pch, "OK\r\n", size))
                             {
-                                const uint8_t size = pending->size - (pch - pending->data);
                                 char const *data = static_cast<char *>(memchr(pch, ':', size));
 
                                 // +CSQ: %d,%d\r\nOK\r\n
@@ -442,24 +462,8 @@ namespace GSM
                                     modem->state = State::offline;
                                 }
                                 command_pop(cmd_buffer);
-                                break;
                             }
-
-                            if(memstr(pending->data, "CONNECT OK", pending->size)
-                            || memstr(pending->data, "ALREADY CONNECT", pending->size))
-                            {
-                                GSM_DEBUG("TCP connection established.\r\n", 29);
-                                modem->socket_state = SocketState::idle;
-                                modem->state = State::open;
-                                command_pop(cmd_buffer);
-                                break;
-                            }
-                            else if(memstr(pending->data, "CONNECT FAIL", pending->size))
-                            {
-                                GSM_DEBUG("TCP connection failed.\r\n", 24);
-                                command_pop(cmd_buffer);
-                                break;
-                            }
+                            break;
                         }
                         break;
                     case State::open:
@@ -468,18 +472,19 @@ namespace GSM
                         {
                             GSM_DEBUG("TCP socket disconnected.\r\n", 26);
                             modem->state = State::ready;
-                            command_pop(cmd_buffer);
+                            command_clear(cmd_buffer);
+                            break;
                         }
 
                         switch(modem->socket_state)
                         {
                             case SocketState::idle:
-                                if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
+                                pch = static_cast<uint8_t *>(memstr(pending->data, "+CIPRXGET: 4,", pending->size));
+                                if(pch)
                                 {
-                                    pch = static_cast<uint8_t *>(memstr(pending->data, "+CIPRXGET: 4,", pending->size));
-                                    if(pch)
+                                    const uint8_t size = pending->size - (pch - pending->data);
+                                    if(memstr(pch, "OK\r\n", size))
                                     {
-                                        const uint8_t size = pending->size - (pch - pending->data);
                                         char const *data = static_cast<char *>(memchr(pch, ',', size));
 
                                         // +CIPRXGET: 4,%d\r\nOK\r\n
@@ -505,25 +510,53 @@ namespace GSM
                                         }
                                         else
                                         {
+                                            // AT+CSQ - signal quality report
+                                            command_t *command = command_front(cmd_buffer);
+                                            command->size = sprintf((char*)command->data, "AT+CSQ\r\n");
+                                            command_push(cmd_buffer);
+                                        }
+                                        command_pop(cmd_buffer);
+                                    }
+                                    break;
+                                }
+
+                                pch = static_cast<uint8_t *>(memstr(pending->data, "+CSQ:", pending->size));
+                                if(pch)
+                                {
+                                    const uint8_t size = pending->size - (pch - pending->data);
+                                    char const *data = static_cast<char *>(memchr(pch, ':', size));
+
+                                    if(memstr(pch, "OK\r\n", size))
+                                    {
+                                        // +CSQ: %d,%d\r\nOK\r\n
+                                        // │   │
+                                        // │   └ data
+                                        // └ pch
+
+                                        modem->signal = strtoul(data+1, nullptr, 0);
+                                        if(!modem->signal || modem->signal == 99)
+                                        {
+                                            GSM_DEBUG("Modem offline.\r\n", 16);
+                                            modem->state = State::offline;
+                                            disconnect(ctx);
+                                        }
+                                        else
+                                        {
                                             // AT+CIPSTATUS - TCP connection status
                                             command_t *command = command_front(cmd_buffer);
                                             command->size = sprintf((char*)command->data, "AT+CIPSTATUS\r\n");
                                             command_push(cmd_buffer);
-
                                             modem->socket_state = SocketState::query;
                                         }
+                                        command_pop(cmd_buffer);
                                     }
-                                    command_pop(cmd_buffer);
+                                    break;
                                 }
                                 break;
                             case SocketState::query:
                                 if(memstr(pending->data, "STATE: CONNECT OK", pending->size))
                                 {
-                                    // AT+CSQ - signal quality report
-                                    command_t *command = command_front(cmd_buffer);
-                                    command->size = sprintf((char*)command->data, "AT+CSQ\r\n");
-                                    command_push(cmd_buffer);
-
+                                    modem->socket_state = SocketState::idle;
                                     command_pop(cmd_buffer);
                                     break;
                                 }
@@ -535,38 +568,23 @@ namespace GSM
                                     command_clear(cmd_buffer);
                                     break;
                                 }
-                                else if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
-                                {
-                                    pch = static_cast<uint8_t *>(memstr(pending->data, "+CSQ:", pending->size));
-                                    if(pch)
-                                    {
-                                        const uint8_t size = pending->size - (pch - pending->data);
-                                        char const *data = static_cast<char *>(memchr(pch, ':', size));
-
-                                        // +CSQ: %d,%d\r\nOK\r\n
-                                        // │   │
-                                        // │   └ data
-                                        // └ pch
-
-                                        modem->signal = strtoul(data+1, nullptr, 0);
-                                        if(!modem->signal || modem->signal == 99)
-                                        {
-                                            GSM_DEBUG("Modem offline.\r\n", 16);
-                                            modem->socket_state = SocketState::idle;
-                                            modem->state = State::offline;
-                                        }
-                                        command_pop(cmd_buffer);
-                                        break;
-                                    }
-                                }
                                 break;
                             case SocketState::stage:
-                                if(memchr(pending->data, '>', pending->size))
+                                if(memstr(pending->data, "ERROR", pending->size))
                                 {
-                                    pch = static_cast<uint8_t *>(memstr(pending->data, "AT+CIPSEND=", pending->size));
-                                    if(pch)
+                                    GSM_DEBUG("Staging error\r\n", 15);
+                                    modem->socket_state = SocketState::idle;
+                                    command_clear(cmd_buffer);
+                                    disconnect(ctx);
+                                    break;
+                                }
+
+                                pch = static_cast<uint8_t *>(memstr(pending->data, "AT+CIPSEND=", pending->size));
+                                if(pch)
+                                {
+                                    const uint8_t size = pending->size - (pch - pending->data);
+                                    if(memchr(pch, '>', size))
                                     {
-                                        const uint8_t size = pending->size - (pch - pending->data);
                                         char const *data = static_cast<char *>(memchr(pch, '=', size));
 
                                         // +CIPSEND=%d\r\n>
@@ -593,22 +611,16 @@ namespace GSM
                                         cmd_buffer->pending->size = 0;
                                         modem->socket_state = SocketState::transmit;
                                     }
-                                }
-                                else if(memstr(pending->data, "ERROR", pending->size))
-                                {
-                                    GSM_DEBUG((char *)pending->data, pending->size);
-                                    modem->socket_state = SocketState::idle;
-                                    command_clear(cmd_buffer);
-                                    disconnect(ctx);
+                                    break;
                                 }
                                 break;
                             case SocketState::transmit:
-                                if(*(pch+count-1) == '\n')
+                                pch = static_cast<uint8_t *>(memstr(pending->data, "DATA ACCEPT:", pending->size));
+                                if(pch)
                                 {
-                                    pch = static_cast<uint8_t *>(memstr(pending->data, "DATA ACCEPT:", pending->size));
-                                    if(pch)
+                                    const uint8_t size = pending->size - (pch - pending->data);
+                                    if(memchr(pch, '\n', size))
                                     {
-                                        const uint8_t size = pending->size - (pch - pending->data);
                                         char const *data = static_cast<char *>(memchr(pch, ':', size));
 
                                         // +DATA ACCEPT:%d\r\n
@@ -632,12 +644,12 @@ namespace GSM
                                 }
                                 break;
                             case SocketState::receive:
-                                if(*(pch+count-4) == 'O' && *(pch+count-3) == 'K')
+                                pch = static_cast<uint8_t *>(memstr(pending->data, "+CIPRXGET: 2,", pending->size));
+                                if(pch)
                                 {
-                                    pch = static_cast<uint8_t *>(memstr(pending->data, "+CIPRXGET: 2,", pending->size));
-                                    if(pch)
+                                    const uint8_t size = pending->size - (pch - pending->data);
+                                    if(memstr(pch, "OK\r\n", size))
                                     {
-                                        const uint8_t size = pending->size - (pch - pending->data);
                                         char const *data_count = static_cast<char *>(memchr(pch, ',', size));
                                         uint8_t const *data = static_cast<uint8_t *>(memchr(pch, '\n', size));
 
@@ -654,6 +666,8 @@ namespace GSM
                                         {
                                             for(uint16_t i=1; i <= count; ++i)
                                             {
+                                                GSM_DEBUG((char*)(data+i), 1);
+                                                GSM_DEBUG("\r\n", 2);
                                                 rx_buffer->data[rx_buffer->head] = *(data+i);
                                                 if(++rx_buffer->head >= BUFFER_SIZE)
                                                     rx_buffer->head = 0U;
@@ -695,38 +709,16 @@ namespace GSM
                 {
                     GSM_DEBUG("Authentication timeout.\r\n", 25);
                     modem->state = State::online;
-                    command_clear(cmd_buffer);
                 }
-                else
-                {
-                    command_pop(cmd_buffer);
-                    if(++modem->errors >= MAX_ERRORS)
-                        reset(ctx);
-                }
+
+                command_clear(cmd_buffer);
+                if(++modem->errors >= MAX_ERRORS)
+                    reset(ctx);
             }
         }
-        else if(cmd_buffer->count > 0)
-        {
-            cmd_buffer->pending = &cmd_buffer->pool[cmd_buffer->tail];
-
-            #ifdef DEBUG
-            memcpy(debug_last_sent, cmd_buffer->pending->data, cmd_buffer->pending->size);
-            debug_size = cmd_buffer->pending->size;
-            /*
-            GSM_DEBUG("\r\n", 2);
-            GSM_DEBUG("Send: ", 6);
-            GSM_DEBUG((char *)debug_last_sent, debug_size);
-            */
-            #endif
-
-            ctx->write(cmd_buffer->pending->data, cmd_buffer->pending->size);
-            cmd_buffer->timer = elapsed_ms + cmd_buffer->pending->timeout_ms;
-            cmd_buffer->pending->size = 0;
-        }
-        else if((int32_t)(elapsed_ms - modem->update_timer) > 0)
+        else if(cmd_buffer->count == 0)
         {
             command_t *command = nullptr;
-            modem->update_timer = elapsed_ms + UPDATE_PERIOD_MS;
 
             switch(modem->state)
             {
@@ -749,7 +741,6 @@ namespace GSM
                     // AT+CREG - network registration status
                     command = command_front(cmd_buffer);
                     command->size = sprintf((char*)command->data, "AT+CREG?\r\n");
-                    command->timeout_ms = 1000; // 1 second
                     command_push(cmd_buffer);
                     break;
                 case State::online:
@@ -796,6 +787,24 @@ namespace GSM
                     }
                     break;
             }
+        }
+        else if((int32_t)(elapsed_ms - modem->update_timer) > 0)
+        {
+            clear(ctx);
+            modem->update_timer = elapsed_ms + SEND_PERIOD_MS;
+            cmd_buffer->pending = &cmd_buffer->pool[cmd_buffer->tail];
+
+            #ifdef DEBUG
+            memcpy(debug_last_sent, cmd_buffer->pending->data, cmd_buffer->pending->size);
+            debug_size = cmd_buffer->pending->size;
+            GSM_DEBUG("\r\n", 2);
+            GSM_DEBUG("Send: ", 6);
+            GSM_DEBUG((char *)debug_last_sent, debug_size);
+            #endif
+
+            ctx->write(cmd_buffer->pending->data, cmd_buffer->pending->size);
+            cmd_buffer->timer = elapsed_ms + cmd_buffer->pending->timeout_ms;
+            cmd_buffer->pending->size = 0;
         }
     }
 
