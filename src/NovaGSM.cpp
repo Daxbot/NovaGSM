@@ -46,7 +46,9 @@
  *     authenticating -> ready      [ label = "OK" ];
  *     ready -> none                [ label = "reset()" ];
  *     ready -> offline             [ label = "lost\nsignal" ];
- *     ready -> open                [ label = "connect()" ];
+ *     ready -> handshaking         [ label = "connect()" ];
+ *     handshaking -> ready         [ label = "error/\ntimeout" ];
+ *     handshaking -> open          [ label = "OK" ];
  *     open -> none                 [ label = "reset()" ];
  *     open -> offline              [ label = "lost\nsignal" ];
  *     open -> ready                [ label = "disconnect()" ];
@@ -65,11 +67,6 @@ namespace GSM
         constexpr uint16_t ID_SIZE = 20;                    /**< Size of the modem ID string buffer. */
         constexpr uint8_t POOL_SIZE = 10;                   /**< Number of pre-allocated command_t structs in the command_buffer_t pool. */
         constexpr uint8_t MAX_ERRORS = 20;                  /**< Communication errors before modem is considered not connected. */
-
-        #ifdef DEBUG
-        uint8_t debug_last_sent[BUFFER_SIZE];
-        uint16_t debug_size;
-        #endif
 
         /** State of data transmission when socket is open. */
         enum class SocketState {
@@ -235,7 +232,6 @@ namespace GSM
                 command_t *pending = cmd_buffer->pending;
                 uint8_t *pch = &pending->data[pending->size];
                 const size_t count = ctx->read(pch, available);;
-                GSM_DEBUG((char *)pch, count);
 
                 pending->size += count;
                 if(pending->size < 4)
@@ -393,23 +389,7 @@ namespace GSM
                         }
                         break;
                     case State::ready:
-                        /** State::ready - ready to GPRS, wait for connect() to transition to State::open. */
-                        if(memstr(pending->data, "CONNECT OK", pending->size)
-                        || memstr(pending->data, "ALREADY CONNECT", pending->size))
-                        {
-                            GSM_DEBUG("TCP connection established.\r\n", 29);
-                            modem->socket_state = SocketState::idle;
-                            modem->state = State::open;
-                            command_pop(cmd_buffer);
-                            break;
-                        }
-                        else if(memstr(pending->data, "CONNECT FAIL", pending->size))
-                        {
-                            GSM_DEBUG("TCP connection failed.\r\n", 24);
-                            command_pop(cmd_buffer);
-                            break;
-                        }
-
+                        /** State::ready - ready to GPRS, wait for connect() to transition to State::handshaking. */
                         pch = static_cast<uint8_t *>(memstr(pending->data, "+CGATT:", pending->size));
                         if(pch)
                         {
@@ -465,6 +445,28 @@ namespace GSM
                             }
                             break;
                         }
+                        break;
+                    case State::handshaking:
+                        /** State::handshaking - handle connect() and transition to State::open on success. */
+                        if(memstr(pending->data, "CONNECT OK", pending->size)
+                        || memstr(pending->data, "ALREADY CONNECT", pending->size))
+                        {
+                            GSM_DEBUG("TCP connection established.\r\n", 29);
+                            modem->socket_state = SocketState::idle;
+                            modem->state = State::open;
+                            command_pop(cmd_buffer);
+                            break;
+                        }
+                        else if(memstr(pending->data, "CONNECT FAIL", pending->size))
+                        {
+                            GSM_DEBUG("TCP connection failed.\r\n", 24);
+                            command_pop(cmd_buffer);
+                            break;
+                        }
+                        else if(memstr(pending->data, "+CGATT:", pending->size))
+                            command_pop(cmd_buffer);
+                        else if(memstr(pending->data, "+CSQ:", pending->size))
+                            command_pop(cmd_buffer);
                         break;
                     case State::open:
                         /** State::open - socket is established, handle write() and listen for incoming data */
@@ -666,8 +668,6 @@ namespace GSM
                                         {
                                             for(uint16_t i=1; i <= count; ++i)
                                             {
-                                                GSM_DEBUG((char*)(data+i), 1);
-                                                GSM_DEBUG("\r\n", 2);
                                                 rx_buffer->data[rx_buffer->head] = *(data+i);
                                                 if(++rx_buffer->head >= BUFFER_SIZE)
                                                     rx_buffer->head = 0U;
@@ -695,22 +695,18 @@ namespace GSM
             }
             else if((int32_t)(elapsed_ms - cmd_buffer->timer) > 0)
             {
-                #ifdef DEBUG
-                    GSM_DEBUG("Command timeout: ", 17);
-                    GSM_DEBUG((char*)debug_last_sent, debug_size);
-                    if(cmd_buffer->pending->size == 0)
-                        GSM_DEBUG("No response", 11);
-                    else
-                        GSM_DEBUG((char*)cmd_buffer->pending->data, cmd_buffer->pending->size);
-                    GSM_DEBUG("\r\n", 2);
-                #endif
-
                 if(modem->state == State::authenticating)
                 {
                     GSM_DEBUG("Authentication timeout.\r\n", 25);
                     modem->state = State::online;
                 }
+                else if(modem->state == State::handshaking)
+                {
+                    GSM_DEBUG("Handshaking timeout.\r\n", 22);
+                    modem->state = State::ready;
+                }
 
+                GSM_DEBUG("Command timeout\r\n", 17);
                 command_clear(cmd_buffer);
                 if(++modem->errors >= MAX_ERRORS)
                     reset(ctx);
@@ -760,6 +756,10 @@ namespace GSM
                     command->timeout_ms = 75000; // 75 seconds
                     command_push(cmd_buffer);
                     break;
+                case State::handshaking:
+                    GSM_DEBUG("Handshaking error.\r\n", 20);
+                    modem->state = State::ready;
+                    break;
                 case State::open:
                     if(modem->tx_buffer.count > 0)
                     {
@@ -793,14 +793,6 @@ namespace GSM
             clear(ctx);
             modem->update_timer = elapsed_ms + SEND_PERIOD_MS;
             cmd_buffer->pending = &cmd_buffer->pool[cmd_buffer->tail];
-
-            #ifdef DEBUG
-            memcpy(debug_last_sent, cmd_buffer->pending->data, cmd_buffer->pending->size);
-            debug_size = cmd_buffer->pending->size;
-            GSM_DEBUG("\r\n", 2);
-            GSM_DEBUG("Send: ", 6);
-            GSM_DEBUG((char *)debug_last_sent, debug_size);
-            #endif
 
             ctx->write(cmd_buffer->pending->data, cmd_buffer->pending->size);
             cmd_buffer->timer = elapsed_ms + cmd_buffer->pending->timeout_ms;
@@ -862,6 +854,7 @@ namespace GSM
                 return -ENETUNREACH;
             case State::authenticating:
                 return -EALREADY;
+            case State::handshaking:
             case State::ready:
             case State::open:
                 return -EISCONN;
@@ -969,6 +962,8 @@ namespace GSM
             case State::online:
             case State::authenticating:
                 return -ENOTCONN;
+            case State::handshaking:
+                return -EALREADY;
             case State::open:
                 return -EADDRINUSE;
 
@@ -979,6 +974,9 @@ namespace GSM
 
         if(modem->cmd_buffer.count >= POOL_SIZE)
             return -ENOBUFS;
+
+        GSM_DEBUG("Handshaking...\r\n", 16);
+        modem->state = State::handshaking;
 
         // AT+CIPSTART=[type],[ip],[port] - start TCP/UDP connection to 'ip':'port'
         command_t *command = command_front(&modem->cmd_buffer);
@@ -1010,6 +1008,7 @@ namespace GSM
                 return -ENETUNREACH;
             case State::online:
             case State::authenticating:
+            case State::handshaking:
             case State::ready:
                 return -ENOTSOCK;
 

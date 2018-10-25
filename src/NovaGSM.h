@@ -35,6 +35,7 @@ namespace GSM
         online,         /**< Network registers the modem. */
         authenticating, /**< Attempting to authenticate with GPRS. */
         ready,          /**< Connected to GPRS. */
+        handshaking,    /**< Attempting to establish TCP connection. */
         open,           /**< TCP socket is open. */
     };
 
@@ -120,6 +121,7 @@ namespace GSM
      * @return -ENODEV if the device is not responsive.
      * @return -ENETUNREACH if the network is not available.
      * @return -ENOTCONN if GPRS is not connected.
+     * @return -EALREADY if handshaking is already in progress.
      * @return -EADDRINUSE if a socket is already open.
      * @return -ENOBUFS if command buffer is full.
      */

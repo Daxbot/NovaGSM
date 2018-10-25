@@ -90,7 +90,9 @@ Enumerations</h2></td></tr>
 &#160;&#160;<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab">State::online</a>, 
 <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e">State::authenticating</a>, 
 <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7">State::ready</a>, 
-<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69">State::open</a>
+<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a19483675c94dd990882c3c65a5a6edbe">State::handshaking</a>, 
+<br />
+&#160;&#160;<a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69">State::open</a>
 <br />
  }</td></tr>
 <tr class="memdesc:a4d5250778227b48f8f99b4e290393fa7"><td class="mdescLeft">&#160;</td><td class="mdescRight">State of the device.  <a href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7">More...</a><br /></td></tr>
@@ -212,6 +214,8 @@ Functions</h2></td></tr>
 <tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e"></a>authenticating&#160;</td><td class="fielddoc"><p class="">Attempting to authenticate with GPRS. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7"></a>ready&#160;</td><td class="fielddoc"><p class="">Connected to GPRS. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7a19483675c94dd990882c3c65a5a6edbe"></a>handshaking&#160;</td><td class="fielddoc"><p class="">Attempting to establish TCP connection. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69"></a>open&#160;</td><td class="fielddoc"><p class="">TCP socket is open. </p>
 </td></tr>
@@ -386,6 +390,8 @@ Functions</h2></td></tr>
 -ENETUNREACH if the network is not available. </dd>
 <dd>
 -ENOTCONN if GPRS is not connected. </dd>
+<dd>
+-EALREADY if handshaking is already in progress. </dd>
 <dd>
 -EADDRINUSE if a socket is already open. </dd>
 <dd>
@@ -639,7 +645,8 @@ Functions</h2></td></tr>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a27a21354321dfbc28f0cb17b995bb9ca" title="No signal.">State::offline</a> - wait for a signal and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7f46165474d11ee5836777d85df2cdab" title="Network registers the modem.">State::online</a> - registered on network, wait for <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Connect to GPRS.">authenticate()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e" title="Attempting to authenticate with GPRS.">State::authenticating</a>.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a3d5d0f5c7a6b281da0b22f8c128fb20e" title="Attempting to authenticate with GPRS.">State::authenticating</a> - handle <a class="el" href="namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595" title="Connect to GPRS.">authenticate()</a> and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> on success.</p>
-<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> - ready to GPRS, wait for <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69" title="TCP socket is open.">State::open</a>.</p>
+<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7ab2fdab230a2c39f3595a947861863cb7" title="Connected to GPRS.">State::ready</a> - ready to GPRS, wait for <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> to transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a19483675c94dd990882c3c65a5a6edbe" title="Attempting to establish TCP connection.">State::handshaking</a>.</p>
+<p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a19483675c94dd990882c3c65a5a6edbe" title="Attempting to establish TCP connection.">State::handshaking</a> - handle <a class="el" href="namespaceGSM.html#a7c4e0cdf479f8bbabc2e25f928998233" title="Open a TCP socket.">connect()</a> and transition to <a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69" title="TCP socket is open.">State::open</a> on success.</p>
 <p class=""><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7a7cef8a734855777c2a9d0caf42666e69" title="TCP socket is open.">State::open</a> - socket is established, handle <a class="el" href="namespaceGSM.html#abe9a36c518c8f0d5d0219ce8cec55fc9" title="Stages bytes to the tx ring buffer.">write()</a> and listen for incoming data </p>
 
 </div>
