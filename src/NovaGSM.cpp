@@ -452,7 +452,6 @@ namespace GSM
                         || memstr(pending->data, "ALREADY CONNECT", pending->size))
                         {
                             GSM_DEBUG("TCP connection established.\r\n", 29);
-                            modem->socket_state = SocketState::idle;
                             modem->state = State::open;
                             command_pop(cmd_buffer);
                             break;
@@ -475,12 +474,57 @@ namespace GSM
                             GSM_DEBUG("TCP socket disconnected.\r\n", 26);
                             modem->state = State::ready;
                             command_clear(cmd_buffer);
+
+                            modem->tx_buffer.tail = modem->tx_buffer.head;
+                            modem->tx_buffer.count = 0;
                             break;
                         }
 
                         switch(modem->socket_state)
                         {
                             case SocketState::idle:
+                                if(memstr(pending->data, "STATE: CONNECT OK", pending->size))
+                                {
+                                    if(modem->tx_buffer.count > 0)
+                                    {
+                                        // AT+CIPSEND=[size] - indicate that data is about to be sent
+                                        command_t *command = command_front(cmd_buffer);
+                                        command->size = sprintf((char*)command->data, "AT+CIPSEND=%u\r\n", modem->tx_buffer.count);
+                                        command_push(cmd_buffer);
+
+                                        #ifdef DEBUG
+                                        char buf[100];
+                                        int len = sprintf(buf, "Stage %d bytes\r\n", modem->tx_buffer.count);
+                                        GSM_DEBUG(buf, len);
+                                        #endif
+
+                                        modem->socket_state = SocketState::stage;
+                                    }
+                                    else
+                                    {
+                                        // AT+CIPRXGET=4 - query socket unread bytes
+                                        command_t *command = command_front(cmd_buffer);
+                                        command->size = sprintf((char*)command->data, "AT+CIPRXGET=4\r\n");
+                                        command_push(cmd_buffer);
+
+                                        modem->socket_state = SocketState::query;
+                                    }
+                                    command_pop(cmd_buffer);
+                                    break;
+                                }
+                                else if(memstr(pending->data, "STATE: TCP CLOSED", pending->size))
+                                {
+                                    GSM_DEBUG("Server closed TCP socket.\r\n", 27);
+                                    modem->socket_state = SocketState::idle;
+                                    modem->state = State::ready;
+                                    command_clear(cmd_buffer);
+
+                                    modem->tx_buffer.tail = modem->tx_buffer.head;
+                                    modem->tx_buffer.count = 0;
+                                    break;
+                                }
+                                break;
+                            case SocketState::query:
                                 pch = static_cast<uint8_t *>(memstr(pending->data, "+CIPRXGET: 4,", pending->size));
                                 if(pch)
                                 {
@@ -542,32 +586,8 @@ namespace GSM
                                             modem->state = State::offline;
                                             disconnect(ctx);
                                         }
-                                        else
-                                        {
-                                            // AT+CIPSTATUS - TCP connection status
-                                            command_t *command = command_front(cmd_buffer);
-                                            command->size = sprintf((char*)command->data, "AT+CIPSTATUS\r\n");
-                                            command_push(cmd_buffer);
-                                            modem->socket_state = SocketState::query;
-                                        }
                                         command_pop(cmd_buffer);
                                     }
-                                    break;
-                                }
-                                break;
-                            case SocketState::query:
-                                if(memstr(pending->data, "STATE: CONNECT OK", pending->size))
-                                {
-                                    modem->socket_state = SocketState::idle;
-                                    command_pop(cmd_buffer);
-                                    break;
-                                }
-                                else if(memstr(pending->data, "STATE: TCP CLOSED", pending->size))
-                                {
-                                    GSM_DEBUG("Server closed TCP socket.\r\n", 27);
-                                    modem->socket_state = SocketState::idle;
-                                    modem->state = State::ready;
-                                    command_clear(cmd_buffer);
                                     break;
                                 }
                                 break;
@@ -575,9 +595,7 @@ namespace GSM
                                 if(memstr(pending->data, "ERROR", pending->size))
                                 {
                                     GSM_DEBUG("Staging error\r\n", 15);
-                                    modem->socket_state = SocketState::idle;
-                                    command_clear(cmd_buffer);
-                                    disconnect(ctx);
+                                    command_pop(cmd_buffer);
                                     break;
                                 }
 
@@ -640,7 +658,6 @@ namespace GSM
                                         GSM_DEBUG(buf, len);
                                         #endif
 
-                                        modem->socket_state = SocketState::idle;
                                         command_pop(cmd_buffer);
                                     }
                                 }
@@ -683,7 +700,6 @@ namespace GSM
                                             GSM_DEBUG(buf, buflen);
                                             #endif
 
-                                            modem->socket_state = SocketState::idle;
                                             command_pop(cmd_buffer);
                                         }
                                     }
@@ -695,21 +711,25 @@ namespace GSM
             }
             else if((int32_t)(elapsed_ms - cmd_buffer->timer) > 0)
             {
-                if(modem->state == State::authenticating)
+                switch(modem->state)
                 {
-                    GSM_DEBUG("Authentication timeout.\r\n", 25);
-                    modem->state = State::online;
+                    case State::authenticating:
+                        GSM_DEBUG("Authentication timeout.\r\n", 25);
+                        command_clear(cmd_buffer);
+                        modem->state = State::online;
+                        break;
+                    case State::handshaking:
+                        GSM_DEBUG("Handshaking timeout.\r\n", 22);
+                        command_clear(cmd_buffer);
+                        modem->state = State::ready;
+                        break;
+                    default:
+                        GSM_DEBUG("Command timeout\r\n", 17);
+                        command_pop(cmd_buffer);
+                        if(++modem->errors >= MAX_ERRORS)
+                            reset(ctx);
+                        break;
                 }
-                else if(modem->state == State::handshaking)
-                {
-                    GSM_DEBUG("Handshaking timeout.\r\n", 22);
-                    modem->state = State::ready;
-                }
-
-                GSM_DEBUG("Command timeout\r\n", 17);
-                command_clear(cmd_buffer);
-                if(++modem->errors >= MAX_ERRORS)
-                    reset(ctx);
             }
         }
         else if(cmd_buffer->count == 0)
@@ -761,30 +781,11 @@ namespace GSM
                     modem->state = State::ready;
                     break;
                 case State::open:
-                    if(modem->tx_buffer.count > 0)
-                    {
-                        // AT+CIPSEND=[size] - indicate that data is about to be sent
-                        command = command_front(cmd_buffer);
-                        command->size = sprintf((char*)command->data, "AT+CIPSEND=%u\r\n", modem->tx_buffer.count);
-                        command_push(cmd_buffer);
-
-                        #ifdef DEBUG
-                        char buf[100];
-                        int len = sprintf(buf, "Stage %d bytes\r\n", modem->tx_buffer.count);
-                        GSM_DEBUG(buf, len);
-                        #endif
-
-                        modem->socket_state = SocketState::stage;
-                    }
-                    else
-                    {
-                        // AT+CIPRXGET=4 - query socket unread bytes
-                        command = command_front(cmd_buffer);
-                        command->size = sprintf((char*)command->data, "AT+CIPRXGET=4\r\n");
-                        command_push(cmd_buffer);
-
-                        modem->socket_state = SocketState::idle;
-                    }
+                    // AT+CIPSTATUS - TCP connection status
+                    command = command_front(cmd_buffer);
+                    command->size = sprintf((char*)command->data, "AT+CIPSTATUS\r\n");
+                    command_push(cmd_buffer);
+                    modem->socket_state = SocketState::idle;
                     break;
             }
         }
@@ -1033,6 +1034,8 @@ namespace GSM
         command->size = sprintf((char*)command->data, "AT+CIPCLOSE\r\n");
         command_push(&modem->cmd_buffer);
 
+        modem->tx_buffer.tail = modem->tx_buffer.head;
+        modem->tx_buffer.count = 0;
         return 0;
     }
 
