@@ -67,6 +67,13 @@ namespace GSM
      */
     State status(context_t *ctx);
 
+    /** Returns if a GPRS connection is established.
+     * 
+     * @param [in] ctx driver operating context.
+     * @warning assumes ctx is not null.
+     */
+    bool authenticated(context_t *ctx);
+
     /** Returns if a TCP connection is established.
      * 
      * @param [in] ctx driver operating context.
@@ -208,6 +215,18 @@ namespace GSM
      */
     inline uint16_t write(context_t *ctx, const char *data, uint16_t size)
         { return write(ctx, (uint8_t *)data, size); };
+
+    /** Wait for GPRS connection to be established.
+     *
+     * @param [in] ctx driver operating context.
+     * @param [in] apn GPRS access point name (max 50 bytes).
+     * @param [in] user GPRS user name (max 50 bytes).
+     * @param [in] pwd GPRS password (max 50 bytes).
+     * @param [in] timeout_ms maximum milliseconds to wait (0 for infinite).
+     * @return -EINVAL if inputs are null.
+     * @return -ETIME if the connect times out.
+     */
+    int authenticate_sync(context_t *ctx, const char *apn, const char *user="", const char *pwd="", uint32_t timeout_ms=0);
 
     /** Wait for TCP connection to be established.
      *

@@ -65,10 +65,10 @@ int main()
     // Initialize the driver
     GSM::init(&ctx);
 
-    // Set the GPRS credentials
-    GSM::authenticate(&ctx, apn, user, pwd);
+    // Wait for GPRS connection (use authenticate() for async)
+    GSM::authenticate_sync(&ctx, apn, user, pwd);
 
-    // Wait for connection (use connect() for async)
+    // Wait for TCP connection (use connect() for async)
     GSM::connect_sync(&ctx, host, port);
 
     while(1)

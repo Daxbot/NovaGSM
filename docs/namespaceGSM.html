@@ -112,6 +112,9 @@ Functions</h2></td></tr>
 <tr class="memitem:a9336e7348a7e1535ed88ef17dece082f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespaceGSM.html#a4d5250778227b48f8f99b4e290393fa7">State</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a9336e7348a7e1535ed88ef17dece082f">status</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
 <tr class="memdesc:a9336e7348a7e1535ed88ef17dece082f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the device state.  <a href="#a9336e7348a7e1535ed88ef17dece082f">More...</a><br /></td></tr>
 <tr class="separator:a9336e7348a7e1535ed88ef17dece082f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab1c56f7cc827c0272091c12f705ec74d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#ab1c56f7cc827c0272091c12f705ec74d">authenticated</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
+<tr class="memdesc:ab1c56f7cc827c0272091c12f705ec74d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns if a GPRS connection is established.  <a href="#ab1c56f7cc827c0272091c12f705ec74d">More...</a><br /></td></tr>
+<tr class="separator:ab1c56f7cc827c0272091c12f705ec74d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acd4b50c2b88ffc58c1a7d6010318b006"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#acd4b50c2b88ffc58c1a7d6010318b006">connected</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx)</td></tr>
 <tr class="memdesc:acd4b50c2b88ffc58c1a7d6010318b006"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns if a TCP connection is established.  <a href="#acd4b50c2b88ffc58c1a7d6010318b006">More...</a><br /></td></tr>
 <tr class="separator:acd4b50c2b88ffc58c1a7d6010318b006"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -148,6 +151,9 @@ Functions</h2></td></tr>
 <tr class="memitem:abe9a36c518c8f0d5d0219ce8cec55fc9"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#abe9a36c518c8f0d5d0219ce8cec55fc9">write</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const uint8_t *<a class="el" href="NovaGSM_8cpp.html#a23154ed3c21371353116482e7b6ff35c">data</a>, uint16_t <a class="el" href="NovaGSM_8cpp.html#ae5dc6ffcd9b7605c7787791e40cc6bb0">size</a>)</td></tr>
 <tr class="memdesc:abe9a36c518c8f0d5d0219ce8cec55fc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stages bytes to the tx ring buffer.  <a href="#abe9a36c518c8f0d5d0219ce8cec55fc9">More...</a><br /></td></tr>
 <tr class="separator:abe9a36c518c8f0d5d0219ce8cec55fc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a640ea607a99b460707ad9b8943b88d03"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a640ea607a99b460707ad9b8943b88d03">authenticate_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *apn, const char *user=&quot;&quot;, const char *pwd=&quot;&quot;, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
+<tr class="memdesc:a640ea607a99b460707ad9b8943b88d03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wait for GPRS connection to be established.  <a href="#a640ea607a99b460707ad9b8943b88d03">More...</a><br /></td></tr>
+<tr class="separator:a640ea607a99b460707ad9b8943b88d03"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a647c69c93eaadc3fd37fc2763557dfed"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a647c69c93eaadc3fd37fc2763557dfed">connect_sync</a> (<a class="el" href="structGSM_1_1context__t.html">context_t</a> *ctx, const char *host, uint16_t port, uint32_t <a class="el" href="NovaGSM_8cpp.html#aca14dfa629015ee4cc42bd01d9933944">timeout_ms</a>=0)</td></tr>
 <tr class="memdesc:a647c69c93eaadc3fd37fc2763557dfed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wait for TCP connection to be established.  <a href="#a647c69c93eaadc3fd37fc2763557dfed">More...</a><br /></td></tr>
 <tr class="separator:a647c69c93eaadc3fd37fc2763557dfed"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -284,6 +290,94 @@ Functions</h2></td></tr>
 -EISCONN if already connected to GPRS. </dd>
 <dd>
 -ENOBUFS if command buffer is full. </dd></dl>
+
+</div>
+</div>
+<a id="a640ea607a99b460707ad9b8943b88d03"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a640ea607a99b460707ad9b8943b88d03">&#9670;&nbsp;</a></span>authenticate_sync()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int GSM::authenticate_sync </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structGSM_1_1context__t.html">context_t</a> *&#160;</td>
+          <td class="paramname"><em>ctx</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>apn</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>user</em> = <code>&quot;&quot;</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>pwd</em> = <code>&quot;&quot;</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>timeout_ms</em> = <code>0</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Wait for GPRS connection to be established. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">apn</td><td>GPRS access point name (max 50 bytes). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">user</td><td>GPRS user name (max 50 bytes). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">pwd</td><td>GPRS password (max 50 bytes). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">timeout_ms</td><td>maximum milliseconds to wait (0 for infinite). </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>-EINVAL if inputs are null. </dd>
+<dd>
+-ETIME if the connect times out. </dd></dl>
+
+</div>
+</div>
+<a id="ab1c56f7cc827c0272091c12f705ec74d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab1c56f7cc827c0272091c12f705ec74d">&#9670;&nbsp;</a></span>authenticated()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool GSM::authenticated </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structGSM_1_1context__t.html">context_t</a> *&#160;</td>
+          <td class="paramname"><em>ctx</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns if a GPRS connection is established. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">ctx</td><td>driver operating context. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section warning"><dt>Warning</dt><dd>assumes ctx is not null. </dd></dl>
 
 </div>
 </div>

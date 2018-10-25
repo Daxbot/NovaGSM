@@ -806,6 +806,14 @@ namespace GSM
         return modem->state;
     }
 
+    bool authenticated(context_t *ctx)
+    {
+        modem_t *modem = static_cast<modem_t*>(ctx->priv);
+        return modem->state == State::ready
+            || modem->state == State::handshaking
+            || modem->state == State::open;
+    }
+
     bool connected(context_t *ctx)
     {
         modem_t *modem = static_cast<modem_t*>(ctx->priv);
@@ -1146,10 +1154,31 @@ namespace GSM
         return count;
     }
 
+    int authenticate_sync(context_t *ctx, const char *apn, const char *user, const char *pwd, uint32_t timeout_ms)
+    {
+        if(ctx == nullptr || apn == nullptr)
+            return -EINVAL;
+
+        uint32_t timer = ctx->elapsed_ms() + timeout_ms;
+
+        while(!authenticated(ctx))
+        {
+            authenticate(ctx, apn, user, pwd);
+            process(ctx);
+            if(timeout_ms && (int32_t)(ctx->elapsed_ms() - timer) > 0)
+                return -ETIME;
+        }
+
+        return 0;
+    }
+
     int connect_sync(context_t *ctx, const char *host, uint16_t port, uint32_t timeout_ms)
     {
         if(ctx == nullptr || host == nullptr)
             return -EINVAL;
+        
+        if(!authenticated(ctx))
+            return -EPERM;
 
         uint32_t timer = ctx->elapsed_ms() + timeout_ms;
 
