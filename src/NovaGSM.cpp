@@ -1083,10 +1083,6 @@ namespace GSM
         modem->cmd_buffer.tail = 0;
         modem->cmd_buffer.timer = 0;
 
-        // Clear pending bytes
-        while(ctx->available())
-            ctx->read(modem->rx_buffer.data, 1);
-
         // Clear data buffers
         modem->tx_buffer.data[0] = '\0';
         modem->tx_buffer.count = 0;
