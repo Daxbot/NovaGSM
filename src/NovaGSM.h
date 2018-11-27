@@ -1,4 +1,4 @@
-/** Driver for estabilishing a TCP authenticateion through a standard GSM/GPRS modem using AT commands.
+/** Driver for establishing a TCP connection through a standard GSM/GPRS modem using AT commands.
  *
  * @file NovaGSM.h
  * @author Wilkins White

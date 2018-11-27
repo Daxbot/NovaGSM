@@ -3,7 +3,7 @@
 <area shape="rect" id="node2" title=" " alt="" coords="5,80,80,107"/>
 <area shape="rect" id="node3" title=" " alt="" coords="105,80,162,107"/>
 <area shape="rect" id="node4" title=" " alt="" coords="186,80,249,107"/>
-<area shape="rect" id="node5" href="$NovaGSM_8h.html" title="Driver for estabilishing a TCP authenticateion through a standard GSM/GPRS modem using AT commands." alt="" coords="273,80,367,107"/>
+<area shape="rect" id="node5" href="$NovaGSM_8h.html" title="Driver for establishing a TCP connection through a standard GSM/GPRS modem using AT commands." alt="" coords="273,80,367,107"/>
 <area shape="rect" id="node6" title=" " alt="" coords="242,155,307,181"/>
 <area shape="rect" id="node7" title=" " alt="" coords="331,155,397,181"/>
 </map>

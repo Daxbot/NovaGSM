@@ -1,5 +1,5 @@
 <map id="src/NovaGSM.h" name="src/NovaGSM.h">
-<area shape="rect" id="node1" title="Driver for estabilishing a TCP authenticateion through a standard GSM/GPRS modem using AT commands." alt="" coords="24,5,140,32"/>
+<area shape="rect" id="node1" title="Driver for establishing a TCP connection through a standard GSM/GPRS modem using AT commands." alt="" coords="24,5,140,32"/>
 <area shape="rect" id="node2" title=" " alt="" coords="5,80,71,107"/>
 <area shape="rect" id="node3" title=" " alt="" coords="95,80,160,107"/>
 </map>
