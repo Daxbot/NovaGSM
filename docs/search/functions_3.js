@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['flush',['flush',['../namespaceGSM.html#a4df6880b45247ffa2947951b619a5efc',1,'GSM']]]
+  ['disconnect',['disconnect',['../classGSM_1_1Modem.html#a07ca5ac86caff40a453863f09b05fea8',1,'GSM::Modem']]]
 ];

@@ -1,8 +1,8 @@
 {
     "name": "NovaGSM",
-    "version": "1.5.3",
+    "version": "2.0.0",
     "keywords": "gsm, gprs, iot",
-    "description": "A hardware-agnostics asyncronous GSM/GPRS modem driver written for embedded devices.",
+    "description": "A hardware-agnostics asyncronous GSM/GPRS modem driver for embedded devices.",
     "repository": {
         "type": "git",
         "url": "https://github.com/DaxBot/NovaGSM"

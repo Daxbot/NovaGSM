@@ -2,100 +2,115 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include "NovaGSM.h"
+#include "Modem.h"
 #include "time.h"
 
-// GPRS credentials
-constexpr char const *apn  = "wholesale";
-constexpr char const *user = "";
-constexpr char const *pwd = "";
-
 // TCP credentials
-constexpr char const *host = "127.0.0.1";
-constexpr uint16_t port = 1883;
+constexpr char const *HOST = "127.0.0.1";
+constexpr int PORT = 1883;
 
-/** GSM::context_t functions. */
-namespace
+/** Read from STDIN. */
+static int ctx_read(void *data, uint32_t size)
 {
-    /** Return the number of bytes that can be read from the device. */
-    size_t ctx_available()
-    {
-        int n;
-        ioctl(STDIN_FILENO, FIONREAD, &n);
-        return (n > 0) ? n : 0;
-    }
+    return read(STDIN_FILENO, data, size);
+}
 
-    /** Read 'size' bytes into 'data' from device.
-     * 
-     * @param [out] data buffer to read into.
-     * @param [in] size maximum size of data buffer.
-     * @return number of bytes read (<= size).
-    */
-    size_t ctx_read(void *data, size_t size)
-    {
-        return read(STDIN_FILENO, data, size);
-    }
+/** Write to STDOUT. */
+static int ctx_write(const void *data, uint32_t size)
+{
+    return write(STDOUT_FILENO, data, size);
+}
 
-    /** Write 'size' bytes from 'data' to device.
-     * 
-     * @param [in] data buffer to write.
-     * @param [in] size number of bytes to write.
-    */
-    void ctx_write(const void *data, size_t size)
-    {
-        write(STDIN_FILENO, data, size);
-    }
+/** Returns time since initialization. */
+static uint32_t ctx_millis()
+{
+    struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    return (now.tv_sec*1e9 + (now.tv_nsec))/1e6;
+}
 
-    uint32_t ctx_millis()
-    {
-        struct timespec now;
-        clock_gettime(CLOCK_REALTIME, &now);
-        return (now.tv_sec*1e9 + (now.tv_nsec))/1e6;
+/** Called on state changes. */
+static void device_callback(GSM::State state, void *user)
+{
+    GSM::Modem *modem = static_cast<GSM::Modem*>(user);
+    switch(state) {
+        case GSM::State::offline:
+            modem->disconnect();
+            break;
+        case GSM::State::online:
+            modem->authenticate();
+            break;
+        case GSM::State::ready:
+            modem->connect(HOST, PORT);
+            break;
+        default:
+            break;
     }
+}
+
+void socket_callback(GSM::Event event, void *user)
+{
+    bool *flag = static_cast<bool*>(user);
+    if(event == GSM::Event::rx_complete || event == GSM::Event::rx_error)
+        *flag = true;
 }
 
 int main()
 {
     GSM::context_t ctx;
-    ctx.available = ctx_available;
     ctx.read = ctx_read;
     ctx.write = ctx_write;
     ctx.elapsed_ms = ctx_millis;
 
     // Initialize the driver
-    GSM::init(&ctx);
+    GSM::Modem modem(&ctx);
 
-    // Wait for GPRS connection (use authenticate() for async)
-    GSM::authenticate_sync(&ctx, apn, user, pwd);
+    // Create a flag to indicate the read is done
+    bool rx_complete = false;
 
-    // Wait for TCP connection (use connect() for async)
-    GSM::connect_sync(&ctx, host, port);
+    // Register callback
+    modem.set_device_callback(device_callback, &modem);
+    modem.set_socket_callback(socket_callback, &rx_complete);
+
+    // Create a buffer to hold incoming data
+    char buffer[100];
 
     while(1)
     {
-        if(GSM::connected(&ctx))
-        {
-            while(GSM::available(&ctx))
-            {
-                uint8_t c;
-                GSM::read(&ctx, &c, 1);
-                GSM::write(&ctx, &c, 1); // echo
-                putchar(c);
-            }
+        size_t count = modem.rx_available();
+        if(count > 0) {
+            rx_complete = false;
+            modem.receive(buffer, sizeof(buffer));
+
+            // Wait for async read
+            while(!rx_complete) {}
+
+            printf("got data: %.*s\n", modem.rx_count(), buffer);
+
         }
 
-        GSM::process(&ctx);
+        modem.process();
     }
 
-    GSM::deinit(&ctx);
     return 0;
 }
 
 /** DEBUG print function
  * 
- * Only required when compiled with -DDEBUG flag
+ * Only required when compiled with -DGSM_DEBUG flag
  */
-void gsm_debug(const char *data, size_t size)
+
+void gsm_debug(int level, const char *file, int line, const char *str)
 {
-    fwrite(data, sizeof(char), size, stderr);
+    const char *p, *basename;
+
+    /* Extract basename from file */
+    for(p = basename = file; *p != '\0'; p++) {
+        if(*p == '/' || *p == '\\') {
+            basename = p + 1;
+        }
+    }
+
+    printf("%s:%04d: |%d| %s", basename, line, level, str);
 }
+

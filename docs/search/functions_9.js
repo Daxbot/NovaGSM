@@ -1,5 +1,7 @@
 var searchData=
 [
-  ['write',['write',['../namespaceGSM.html#abe9a36c518c8f0d5d0219ce8cec55fc9',1,'GSM::write(context_t *ctx, const uint8_t *data, uint16_t size)'],['../namespaceGSM.html#aa2a74fc9c0bb98314caa1c3c2dabba61',1,'GSM::write(context_t *ctx, const char *data, uint16_t size)']]],
-  ['write_5fsync',['write_sync',['../namespaceGSM.html#a776c3e7d84ceb8986e0e2d7dff984b37',1,'GSM::write_sync(context_t *ctx, const uint8_t *data, uint16_t size, uint32_t timeout_ms=0)'],['../namespaceGSM.html#ae75e4521fc49c772170c9fd8921ffa03',1,'GSM::write_sync(context_t *ctx, const char *data, uint16_t size, uint32_t timeout_ms=0)']]]
+  ['receive',['receive',['../classGSM_1_1Modem.html#afecbe741321805fc722812a5257b1ad7',1,'GSM::Modem']]],
+  ['reset',['reset',['../classGSM_1_1Modem.html#a5cd7e55884fe4b1e89b5ad3b9d0a9ef2',1,'GSM::Modem']]],
+  ['rx_5favailable',['rx_available',['../classGSM_1_1Modem.html#afc2238446de97d53a2974977c56801ae',1,'GSM::Modem']]],
+  ['rx_5fcount',['rx_count',['../classGSM_1_1Modem.html#ae162af93ec38541f8dab4ecf45c79a01',1,'GSM::Modem']]]
 ];

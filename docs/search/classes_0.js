@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['context_5ft',['context_t',['../structGSM_1_1context__t.html',1,'GSM']]]
+  ['buffer',['Buffer',['../classGSM_1_1Buffer.html',1,'GSM']]]
 ];

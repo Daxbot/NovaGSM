@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['init',['init',['../namespaceGSM.html#abb03fb9cb58e2aff07fbe3857c391257',1,'GSM']]]
+  ['empty',['empty',['../classGSM_1_1Buffer.html#a2d10c2b85372294d5b3826a6c8589f0d',1,'GSM::Buffer']]]
 ];

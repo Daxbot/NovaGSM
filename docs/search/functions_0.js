@@ -1,7 +1,4 @@
 var searchData=
 [
-  ['authenticate',['authenticate',['../namespaceGSM.html#acc2246f99aa28a95f4069d8f1a695595',1,'GSM']]],
-  ['authenticate_5fsync',['authenticate_sync',['../namespaceGSM.html#a640ea607a99b460707ad9b8943b88d03',1,'GSM']]],
-  ['authenticated',['authenticated',['../namespaceGSM.html#ab1c56f7cc827c0272091c12f705ec74d',1,'GSM']]],
-  ['available',['available',['../namespaceGSM.html#a4e7f1b2496140c5d14554fa02f2f805e',1,'GSM']]]
+  ['authenticate',['authenticate',['../classGSM_1_1Modem.html#a0de928782888619fe8fc53bf2de3b0f8',1,'GSM::Modem::authenticate(const void *apn, uint8_t apn_size, const void *user, uint8_t user_size, const void *pwd, uint8_t pwd_size)'],['../classGSM_1_1Modem.html#a00358337f8b5c5ce764929aebb81c584',1,'GSM::Modem::authenticate(const char *apn=&quot;wholesale&quot;, const char *user=&quot;&quot;, const char *pwd=&quot;&quot;)']]]
 ];
