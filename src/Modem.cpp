@@ -82,11 +82,11 @@ namespace GSM
          * The process loop handles communication with the modem and transitions
          * between device states. If there is not a command already awaiting a 
          * response then the next command in the buffer is sent.  Responses are
-         * handled based on the GSM::State.  Any m_pending packets that exceed their
+         * handled based on the GSM::State.  Any pending packets that exceed their
          * timeout value are discarded and the error counter incremented.  
          *
-         * If the error counter exceeds MAX_ERRORS the modem is assumed to be MIA and
-         * the driver returns to State::none.  The error counter is reset whenever a
+         * If the error counter exceeds ERRORS_MAX the modem is assumed to be MIA and
+         * the driver returns to State::reset.  The error counter is reset whenever a
          * response is received.
          * 
          * If the signal is lost the connection is assumed to be broken and the driver
@@ -97,7 +97,6 @@ namespace GSM
         uint32_t elapsed_ms = m_ctx->elapsed_ms();
 
         if(m_pending) {
-            // If there is a command m_pending, check for a response.
             p_data = &m_pending->data[m_pending->size];
             const int read_count = m_ctx->read(p_data, (BUFFER_SIZE - m_pending->size));
             if(read_count > 0) {
@@ -106,8 +105,8 @@ namespace GSM
                     return;
 
                 switch(m_device_state) {
-                    case State::none:
-                        /** State::none - wait for the modem to respond to an ATI query and transition to State::init. */
+                    case State::reset:
+                        /** State::reset - wait for the modem to respond to an ATI query and transition to State::init. */
                         p_data = static_cast<uint8_t*>(memstr(m_pending->data, "ATI", m_pending->size));
                         if(p_data) {
                             const uint8_t size = m_pending->size - (p_data - m_pending->data);
@@ -122,9 +121,9 @@ namespace GSM
                                 GSM_INFO("Modem is: %s\n", m_modem_id);
 
                                 // ATI\r\n%s\r\nOK\r\n
-                                // │     │   │
-                                // │     │   └ id_end
-                                // │     └ id_start
+                                // │       │ │
+                                // │       │ └ id_end
+                                // │       └ id_start
                                 // └ p_data
 
 
@@ -188,14 +187,14 @@ namespace GSM
                                 m_pending = nullptr;
                                 m_errors = 0;
 
-                                char const *data = static_cast<char*>(memchr(p_data, ',', size));
+                                char const *data = static_cast<char*>(memchr(p_data, ',', size))+1;
 
                                 // +CREG: %u,%u,%s,%s\r\nOK\r\n
-                                // │        │
-                                // │        └ data
+                                // │          │
+                                // │          └ data
                                 // └ p_data
 
-                                const uint8_t status = strtoul(data+1, nullptr, 0);
+                                const uint8_t status = strtoul(data, nullptr, 0);
                                 if(status == 1 || status == 5) {
                                     GSM_INFO("Modem online\n");
                                     set_state(State::online);
@@ -216,14 +215,14 @@ namespace GSM
                                 m_pending = nullptr;
                                 m_errors = 0;
 
-                                char const *data = static_cast<char*>(memchr(p_data, ':', size));
+                                char const *data = static_cast<char*>(memchr(p_data, ':', size))+1;
 
                                 // +CSQ: %u,%u\r\nOK\r\n
-                                // │   │
-                                // │   └ data
+                                // │    │
+                                // │    └ data
                                 // └ p_data
 
-                                m_rssi = strtoul(data+1, nullptr, 0);
+                                m_rssi = strtoul(data, nullptr, 0);
                                 if(!m_rssi || m_rssi == 99) {
                                     GSM_INFO("Modem offline\n");
                                     set_state(State::offline);
@@ -257,7 +256,7 @@ namespace GSM
                         }
                         break;
                     case State::ready:
-                        /** State::ready - ready to GPRS, wait for connect() to transition to State::handshaking. */
+                        /** State::ready - authenticated with GPRS, wait for connect() to transition to State::handshaking. */
                         p_data = static_cast<uint8_t*>(memstr(m_pending->data, "+CGATT:", m_pending->size));
                         if(p_data) {
                             const uint8_t size = m_pending->size - (p_data - m_pending->data);
@@ -266,14 +265,14 @@ namespace GSM
                                 m_pending = nullptr;
                                 m_errors = 0;
 
-                                char const *data = static_cast<char*>(memchr(p_data, ':', size));
+                                char const *data = static_cast<char*>(memchr(p_data, ':', size))+1;
 
                                 // +CGATT: %u\r\nOK\r\n
-                                // │     │
-                                // │     └ data
+                                // │      │
+                                // │      └ data
                                 // └ p_data
 
-                                const uint8_t status = strtoul(data+1, nullptr, 0);
+                                const uint8_t status = strtoul(data, nullptr, 0);
 
                                 if(status) {
                                     // AT+CSQ - signal quality report
@@ -297,14 +296,14 @@ namespace GSM
                                 m_pending = nullptr;
                                 m_errors = 0;
 
-                                char const *data = static_cast<char*>(memchr(p_data, ':', size));
+                                char const *data = static_cast<char*>(memchr(p_data, ':', size))+1;
 
                                 // +CSQ: %u,%u\r\nOK\r\n
-                                // │   │
-                                // │   └ data
+                                // │    │
+                                // │    └ data
                                 // └ p_data
 
-                                m_rssi = strtoul(data+1, nullptr, 0);
+                                m_rssi = strtoul(data, nullptr, 0);
                                 if(!m_rssi || m_rssi == 99) {
                                     GSM_WARN("Modem offline.\n");
                                     set_state(State::offline);
@@ -344,15 +343,22 @@ namespace GSM
                         }
                         break;
                     case State::open:
-                        /** State::open - socket is established, handle write() and listen for incoming data */
+                        /** State::open - socket connection is established, handle disconnect() and data transfer. */
                         if(memstr(m_pending->data, "CLOSE OK", m_pending->size)) {
                             GSM_INFO("TCP socket disconnected\n");
-                            m_cmd_buffer.pop();
+                            m_cmd_buffer.clear();
                             m_pending = nullptr;
                             m_errors = 0;
-                        }
 
-                        socket_process();
+                            stop_send();
+                            stop_receive();
+
+                            m_socket_state = SocketState::idle;
+                            set_state(State::ready);
+                        }
+                        else {
+                            socket_process();
+                        }
                         break;
                 }
             }
@@ -406,7 +412,7 @@ namespace GSM
             command_t *command = nullptr;
 
             switch(m_device_state) {
-                case State::none:
+                case State::reset:
                     // ATI - device identification
                     command = m_cmd_buffer.front();
                     command->size = sprintf(reinterpret_cast<char*>(command->data), "ATI\r\n");
@@ -491,7 +497,7 @@ namespace GSM
 
         switch(m_device_state) {
             // Invalid state, return error
-            case State::none:
+            case State::reset:
                 return -ENODEV;
             case State::init:
             case State::locked:
@@ -604,7 +610,7 @@ namespace GSM
 
         switch(m_device_state) {
             // Invalid state, return error
-            case State::none:
+            case State::reset:
                 return -ENODEV;
             case State::init:
             case State::locked:
@@ -650,7 +656,7 @@ namespace GSM
     {
         switch(m_device_state) {
             // Invalid state, return error
-            case State::none:
+            case State::reset:
                 return -ENODEV;
             case State::init:
             case State::locked:
@@ -681,19 +687,12 @@ namespace GSM
     {
         GSM_INFO("Connection reset\n");
 
-        if(f_sock_cb) {
-            if(m_tx_buffer && m_tx_size != m_tx_count)
-                f_sock_cb(Event::tx_error, p_sock_cb_user);
-
-            if(m_rx_buffer && m_rx_size != m_rx_count)
-                f_sock_cb(Event::rx_error, p_sock_cb_user);
-        }
-
+        stop_send();
+        stop_receive();
         m_cmd_buffer.clear();
         m_pending = nullptr;
         m_command_timer = 0;
         m_update_timer = 0;
-        m_device_state = State::none;
         m_socket_state = SocketState::idle;
         m_rssi = 99;
         m_errors = 0;
@@ -702,6 +701,7 @@ namespace GSM
         m_rx_available = 0;
         m_tx_available = 0;
         m_modem_id[0] = '\0';
+        set_state(State::reset);
     }
 
     void Modem::receive(void *data,  uint32_t size)
@@ -711,11 +711,27 @@ namespace GSM
         m_rx_count = 0;
     }
 
+    void Modem::stop_receive()
+    {
+        if(f_sock_cb && rx_busy())
+            f_sock_cb(Event::rx_stopped, p_sock_cb_user);
+
+        receive(nullptr, 0);
+    }
+
     void Modem::send(const void *data, uint32_t size)
     {
         m_tx_buffer = static_cast<const uint8_t*>(data);
         m_tx_size = size;
         m_tx_count = 0;
+    }
+
+    void Modem::stop_send()
+    {
+        if(f_sock_cb && tx_busy())
+            f_sock_cb(Event::tx_stopped, p_sock_cb_user);
+
+        send(nullptr, 0);
     }
 
     void Modem::socket_process()
@@ -777,22 +793,14 @@ namespace GSM
                 }
                 else if(memstr(m_pending->data, "STATE: TCP CLOSED", m_pending->size)) {
                     GSM_WARN("Server closed TCP socket.\n");
-                    m_socket_state = SocketState::idle;
-
-                    if(f_sock_cb) {
-                        if(m_tx_buffer && m_tx_size != m_tx_count)
-                            f_sock_cb(Event::tx_error, p_sock_cb_user);
-
-                        if(m_rx_buffer && m_rx_size != m_rx_count)
-                            f_sock_cb(Event::rx_error, p_sock_cb_user);
-                    }
-
-                    m_tx_buffer = nullptr;
-                    m_rx_buffer = nullptr;
-
                     m_cmd_buffer.clear();
                     m_pending = nullptr;
                     m_errors = 0;
+
+                    stop_send();
+                    stop_receive();
+
+                    m_socket_state = SocketState::idle;
                     set_state(State::ready);
                     break;
                 }
@@ -888,13 +896,15 @@ namespace GSM
                         // └ p_data
 
                         const unsigned int count = strtoul(reinterpret_cast<char const *>(data_size), nullptr, 0);
-                        memcpy(m_rx_buffer+m_rx_count, data, count);
-                        GSM_INFO("Received %u bytes (%u)\n", count, m_rx_size-m_rx_count-count);
+                        if(m_rx_buffer) {
+                            memcpy(m_rx_buffer+m_rx_count, data, count);
+                            GSM_INFO("Received %u bytes (%u)\n", count, m_rx_size-m_rx_count-count);
 
-                        m_rx_count += count;
-                        m_rx_available = 0;
-                        if(m_rx_count == m_rx_size && f_sock_cb)
-                            f_sock_cb(Event::rx_complete, p_sock_cb_user);
+                            m_rx_count += count;
+                            m_rx_available -= count;
+                            if(m_rx_count == m_rx_size && f_sock_cb)
+                                f_sock_cb(Event::rx_complete, p_sock_cb_user);
+                        }
 
                         m_errors = 0;
                         m_socket_state = SocketState::idle;
@@ -943,8 +953,16 @@ namespace GSM
                         // └ p_data
 
                         const unsigned int count = strtoul(data_accept, nullptr, 0);
-                        m_ctx->write(m_tx_buffer+m_tx_count, count);
-                        GSM_VERBOSE("CTS %u bytes (%u)\n", count, m_tx_size-m_tx_count);
+                        if(m_tx_buffer) {
+                            m_ctx->write(m_tx_buffer+m_tx_count, count);
+                            GSM_VERBOSE("CTS %u bytes (%u)\n", count, m_tx_size-m_tx_count);
+                        }
+                        else {
+                            // Modem is still expecting data, just send '\0'
+                            char buffer[GSM_BUFFER_SIZE];
+                            memset(buffer, '\0', GSM_BUFFER_SIZE);
+                            m_ctx->write(buffer, GSM_BUFFER_SIZE);
+                        }
 
                         // Reset the buffer and use it for the response
                         m_command_timer = m_ctx->elapsed_ms() + m_pending->timeout_ms;

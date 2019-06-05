@@ -30,7 +30,7 @@ namespace GSM
      * @see process() for a functional description.
      */
     enum class State {
-        none,           /**< None. */
+        reset,          /**< None. */
         init,           /**< SIM is being initialized. */
         locked,         /**< SIM is locked. */
         offline,        /**< No signal. */
@@ -45,8 +45,10 @@ namespace GSM
     enum class Event {
         new_data,       /**< New data available for read(). */
         rx_complete,    /**< A read command has finished. */
+        rx_stopped,     /**< A read command was stopped. */
         rx_error,       /**< A read command failed. */
         tx_complete,    /**< A write command has finished. */
+        tx_stopped,     /**< A write command was stopped. */
         tx_error,       /**< A write command failed. */
     };
 
@@ -175,7 +177,7 @@ namespace GSM
 
             /** Reinitialize driver.
              *
-             * Resets the context and transitions to State::none.
+             * Resets the context and transitions to State::reset.
              */
             void reset();
 
@@ -195,6 +197,12 @@ namespace GSM
              */
             void receive(void *data, uint32_t size);
 
+            /** Cancel an ongoing receive() call.
+             *
+             * @warning if the modem data transfer is in progress the data will be lost.
+             */
+            void stop_receive();
+
             /** Stages bytes to the tx ring buffer.
              *
              * @param [in] data buffer to write.
@@ -202,8 +210,15 @@ namespace GSM
              */
             void send(const void *data, uint32_t size);
 
+            /** Cancel an ongoing send() call.
+             *
+             * @warning if the modem data transfer is in progress '\0' will be sent
+             * for the remaining bytes.
+             */
+            void stop_send();
+
             /** Number of bytes available in the modem's buffer. */
-            size_t rx_available()
+            inline size_t rx_available()
             {
                 return m_rx_available;
             }
@@ -213,23 +228,41 @@ namespace GSM
              * Buffers larger than this will be automatically broken up
              * and sent over multiple transfers.
              */
-            size_t tx_available()
+            inline size_t tx_available()
             {
                 return m_tx_available;
             }
 
-            /** Get the status of the last receive call
+            /** Poll the status of the last receive() call.
              *
-             * @returns number of bytes received, or -1 on error
+             * @return true if receive is in progress.
+             */
+            inline bool rx_busy()
+            {
+                return m_rx_buffer && m_rx_count < m_rx_size;
+            }
+
+            /** Poll the status of the last send() call.
+             *
+             * @return true if send is in progress.
+             */
+            inline bool tx_busy()
+            {
+                return m_tx_buffer && m_tx_count < m_tx_size;
+            }
+
+            /** Poll the status of the last receive() call
+             *
+             * @return number of bytes received, or -1 on error
              */
             inline int rx_count()
             {
                 return (m_rx_buffer) ? m_rx_count : -1;
             }
 
-            /** Get the status of the last send call
+            /** Poll the status of the last send() call
              *
-             * @returns number of bytes sent, or -1 on error
+             * @return number of bytes sent, or -1 on error
              */
             inline int tx_count()
             {
@@ -278,14 +311,14 @@ namespace GSM
 
             /**@{*/
             /** Called on state change. */
-            void (*f_dev_cb)(State state, void *user);
-            void *p_dev_cb_user;
+            void (*f_dev_cb)(State state, void *user) = nullptr;
+            void *p_dev_cb_user = nullptr;
             /**@}*/
 
             /**@{*/
             /** Called on socket data event. */
-            void (*f_sock_cb)(Event event, void *user);
-            void *p_sock_cb_user;
+            void (*f_sock_cb)(Event event, void *user) = nullptr;
+            void *p_sock_cb_user = nullptr;
             /**@}*/
 
             Buffer m_cmd_buffer;                            /**< Queued commands to send. */
@@ -293,18 +326,18 @@ namespace GSM
             uint8_t *p_data = nullptr;                      /**< Current buffer position. */
             uint32_t m_command_timer = 0;                   /**< Time the pending command will expire. */
             uint32_t m_update_timer = 0;                    /**< Time of the next state update. */
-            State m_device_state = State::none;             /**< State of the modem. */
+            State m_device_state = State::reset;             /**< State of the modem. */
             SocketState m_socket_state = SocketState::idle; /**< State of data transmission through the socket. */
             uint8_t m_rssi = 99;                            /**< Signal rssi value reported by AT+CSQ. */
             uint8_t m_errors = 0;                           /**< Timeout error counter.  If it exceeds MAX_ERRORS call reset(). */
             char m_modem_id[ID_SIZE] = {};                  /**< Holds the response from ATI. */
 
-            const uint8_t *m_tx_buffer;                     /**< User buffer to send from. */
+            const uint8_t *m_tx_buffer = nullptr;           /**< User buffer to send from. */
             size_t m_tx_size = 0;                           /**< Size of 'm_tx_buffer'. */
             size_t m_tx_count = 0;                          /**< Number of bytes that have been read from 'm_tx_buffer'. */
             size_t m_tx_available = 0;                      /**< Tracks the space in the modem's tx buffer. */
 
-            uint8_t *m_rx_buffer;                           /**< User buffer to receive into. */
+            uint8_t *m_rx_buffer = nullptr;                 /**< User buffer to receive into. */
             size_t m_rx_size = 0;                           /**< Size of 'm_rx_buffer'. */
             size_t m_rx_count = 0;                          /**< Number of bytes that have been written to 'm_rx_buffer'. */
             size_t m_rx_available = 0;                      /**< Tracks the number of bytes in the modem's rx buffer. */
