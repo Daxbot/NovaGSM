@@ -88,7 +88,7 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="enum-members"></a>
 Enumerations</h2></td></tr>
 <tr class="memitem:aa0bb04b33d82d6775e86839f51bc32a6"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6">State</a> { <br />
-&#160;&#160;<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a334c4a4c42fdb79d7ebc3e73b517e6f8">State::none</a>, 
+&#160;&#160;<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a86266ee937d97f812a8e57d22b62ee29">State::reset</a>, 
 <a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6ae37f0136aa3ffaf149b351f6a4c948e9">State::init</a>, 
 <a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a4cef2f30ac7d33419d00c1d93a090095">State::locked</a>, 
 <a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a27a21354321dfbc28f0cb17b995bb9ca">State::offline</a>, 
@@ -106,10 +106,12 @@ Enumerations</h2></td></tr>
 <tr class="memitem:ac04b5e83f7ac20d8a1b2e523f4730162"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162">Event</a> { <br />
 &#160;&#160;<a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162a701793633b6cb8f1dc66d056bc58f6e9">Event::new_data</a>, 
 <a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162ac199226fad609bd45d53a89d4697f234">Event::rx_complete</a>, 
+<a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162a7b9e29894d2e6123167a670177a95572">Event::rx_stopped</a>, 
 <a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162a6445f1d757450913028890238b74201f">Event::rx_error</a>, 
-<a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162aec34e3565de3cff942dd902a6d4f7320">Event::tx_complete</a>, 
 <br />
-&#160;&#160;<a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162a102233c6f39344b43e422e786674d682">Event::tx_error</a>
+&#160;&#160;<a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162aec34e3565de3cff942dd902a6d4f7320">Event::tx_complete</a>, 
+<a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162a9913886e55d3063e129daf557cebdbea">Event::tx_stopped</a>, 
+<a class="el" href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162a102233c6f39344b43e422e786674d682">Event::tx_error</a>
 <br />
  }<tr class="memdesc:ac04b5e83f7ac20d8a1b2e523f4730162"><td class="mdescLeft">&#160;</td><td class="mdescRight">Socket callback event.  <a href="namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162">More...</a><br /></td></tr>
 </td></tr>
@@ -159,9 +161,13 @@ Variables</h2></td></tr>
 </td></tr>
 <tr><td class="fieldname"><a id="ac04b5e83f7ac20d8a1b2e523f4730162ac199226fad609bd45d53a89d4697f234"></a>rx_complete&#160;</td><td class="fielddoc"><p>A read command has finished. </p>
 </td></tr>
+<tr><td class="fieldname"><a id="ac04b5e83f7ac20d8a1b2e523f4730162a7b9e29894d2e6123167a670177a95572"></a>rx_stopped&#160;</td><td class="fielddoc"><p>A read command was stopped. </p>
+</td></tr>
 <tr><td class="fieldname"><a id="ac04b5e83f7ac20d8a1b2e523f4730162a6445f1d757450913028890238b74201f"></a>rx_error&#160;</td><td class="fielddoc"><p>A read command failed. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="ac04b5e83f7ac20d8a1b2e523f4730162aec34e3565de3cff942dd902a6d4f7320"></a>tx_complete&#160;</td><td class="fielddoc"><p>A write command has finished. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ac04b5e83f7ac20d8a1b2e523f4730162a9913886e55d3063e129daf557cebdbea"></a>tx_stopped&#160;</td><td class="fielddoc"><p>A write command was stopped. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="ac04b5e83f7ac20d8a1b2e523f4730162a102233c6f39344b43e422e786674d682"></a>tx_error&#160;</td><td class="fielddoc"><p>A write command failed. </p>
 </td></tr>
@@ -192,7 +198,7 @@ Variables</h2></td></tr>
 <p>State of the device. </p>
 <dl class="section see"><dt>See also</dt><dd>process() for a functional description. </dd></dl>
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6a334c4a4c42fdb79d7ebc3e73b517e6f8"></a>none&#160;</td><td class="fielddoc"><p>None. </p>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6a86266ee937d97f812a8e57d22b62ee29"></a>reset&#160;</td><td class="fielddoc"><p>None. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6ae37f0136aa3ffaf149b351f6a4c948e9"></a>init&#160;</td><td class="fielddoc"><p>SIM is being initialized. </p>
 </td></tr>
