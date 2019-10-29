@@ -3,10 +3,11 @@
  * @file Buffer.h
  * @author Wilkins White
  * @copyright 2019 Nova Dynamics LLC
+ * @version 1.0
  */
 
-#ifndef BUFFER_H_
-#define BUFFER_H_
+#ifndef _GSM_BUFFER_H_
+#define _GSM_BUFFER_H_
 
 #include <stdint.h>
 
@@ -106,4 +107,4 @@ namespace GSM
     };
 }
 
-#endif /* BUFFER_H_ */
+#endif /* _GSM_BUFFER_H_ */

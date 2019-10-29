@@ -3,6 +3,7 @@
  * @file Modem.cpp
  * @author Wilkins White
  * @copyright 2019 Nova Dynamics LLC
+ * @version 2.2
  */
 
 #include <algorithm>

@@ -3,10 +3,11 @@
  * @file debug.h
  * @author Wilkins White
  * @copyright 2019 Nova Dynamics LLC
+ * @version 1.0
  */
 
-#ifndef DEBUG_H_
-#define DEBUG_H_
+#ifndef _GSM_DEBUG_H_
+#define _GSM_DEBUG_H_
 
 #ifdef GSM_DEBUG
 void gsm_debug_print(int level, const char *file, int line, const char *format, ...);
@@ -48,5 +49,4 @@ void gsm_debug_print(int level, const char *file, int line, const char *format, 
 #endif
 /**@}*/
 
-
-#endif /* DEBUG_H_ */
+#endif /* _GSM_DEBUG_H_ */

@@ -3,18 +3,24 @@
  * @file Modem.h
  * @author Wilkins White
  * @copyright 2019 Nova Dynamics LLC
+ * @version 2.2
  */
 
-#ifndef MODEM_H_
-#define MODEM_H_
+#ifndef _GSM_MODEM_H_
+#define _GSM_MODEM_H_
 
 #include <stdint.h>
-
 #include "Buffer.h"
 
 /** Handles buffered communication through a GSM/GPRS modem. */
 namespace GSM
 {
+    constexpr uint8_t MAJOR_VERSION = 2;    /**< Major version, increment for breaking changes. */
+    constexpr uint8_t MINOR_VERSION = 2;    /**< Minor version, increment for non-breaking changes. */
+
+    /** Library version. */
+    constexpr uint16_t VERSION = (MAJOR_VERSION * 100) + MINOR_VERSION;
+
     /** Size of the buffer to store the modem ID. */
     constexpr size_t ID_SIZE = 20;
 
@@ -344,4 +350,4 @@ namespace GSM
     };
 }
 
-#endif /* MODEM_H_ */
+#endif /* _GSM_MODEM_H_ */

@@ -3,6 +3,7 @@
  * @file debug.cpp
  * @author Wilkins White
  * @copyright 2019 Nova Dynamics LLC
+ * @version 1.0
  */
 
 #include <cstdio>
