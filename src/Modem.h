@@ -306,11 +306,31 @@ namespace GSM
                 cts,    /**< Data is being written from the send buffer. */
             };
 
-            /** Handle socket data transfer in State::open. */
-            void socket_process();
-
             /** Update the device state and call 'f_dev_cb'. */
             void set_state(State state);
+
+            /** State functions called by process.
+             * @{
+             */
+            void _process_reset();
+            void _process_init_locked();
+            void _process_offline();
+            void _process_online();
+            void _process_authenticating();
+            void _process_ready();
+            void _process_handshaking();
+            void _process_open();
+            /** @} */
+
+            /** State functions called in State::open.
+             * @{
+             */
+            void _socket_idle();
+            void _socket_poll();
+            void _socket_rtr();
+            void _socket_rts();
+            void _socket_cts();
+            /** @} */
 
             /** Driver operating context. */
             context_t const *m_ctx;
@@ -329,7 +349,6 @@ namespace GSM
 
             Buffer m_cmd_buffer;                            /**< Queued commands to send. */
             command_t *m_pending = nullptr;                 /**< Most recent command awaiting response. */
-            uint8_t *p_data = nullptr;                      /**< Current buffer position. */
             uint32_t m_command_timer = 0;                   /**< Time the pending command will expire. */
             uint32_t m_update_timer = 0;                    /**< Time of the next state update. */
             State m_device_state = State::reset;             /**< State of the modem. */
