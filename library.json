@@ -1,6 +1,6 @@
 {
     "name": "NovaGSM",
-    "version": "2.1.0",
+    "version": "3.0.0",
     "keywords": "gsm, gprs, iot",
     "description": "A hardware-agnostics asyncronous GSM/GPRS modem driver for embedded devices.",
     "repository": {

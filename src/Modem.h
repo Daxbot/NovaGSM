@@ -15,8 +15,8 @@
 /** Handles buffered communication through a GSM/GPRS modem. */
 namespace GSM
 {
-    constexpr int MAJOR_VERSION = 2;    /**< Major version, increment for breaking changes. */
-    constexpr int MINOR_VERSION = 2;    /**< Minor version, increment for non-breaking changes. */
+    constexpr int MAJOR_VERSION = 3;    /**< Major version, increment for breaking changes. */
+    constexpr int MINOR_VERSION = 0;    /**< Minor version, increment for non-breaking changes. */
 
     /** Library version. */
     constexpr int VERSION = (MAJOR_VERSION * 100) + MINOR_VERSION;
