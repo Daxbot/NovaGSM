@@ -3,7 +3,7 @@
  * @file Modem.h
  * @author Wilkins White
  * @copyright 2019 Nova Dynamics LLC
- * @version 2.2
+ * @version 3.0
  */
 
 #ifndef _GSM_MODEM_H_
@@ -15,20 +15,65 @@
 /** Handles buffered communication through a GSM/GPRS modem. */
 namespace GSM
 {
-    constexpr uint8_t MAJOR_VERSION = 2;    /**< Major version, increment for breaking changes. */
-    constexpr uint8_t MINOR_VERSION = 2;    /**< Minor version, increment for non-breaking changes. */
+    constexpr int MAJOR_VERSION = 2;    /**< Major version, increment for breaking changes. */
+    constexpr int MINOR_VERSION = 2;    /**< Minor version, increment for non-breaking changes. */
 
     /** Library version. */
-    constexpr uint16_t VERSION = (MAJOR_VERSION * 100) + MINOR_VERSION;
+    constexpr int VERSION = (MAJOR_VERSION * 100) + MINOR_VERSION;
 
     /** Size of the buffer to store the modem ID. */
-    constexpr size_t ID_SIZE = 20;
+    constexpr int ID_SIZE = 20;
 
-    /** Defines resources and callbacks used by the driver. */
+    /** Maximum size of socket data transfers.
+     *
+     * Each data chunk must be less than the actual
+     * buffer size to account for protocol overhead.
+     */
+    constexpr int SOCKET_MAX = (GSM_BUFFER_SIZE - 64);
+
+    /** Defines resources and callbacks used by the driver.
+     *
+     * The user has two API options: common and asynchronous.
+     *
+     * The common API expects a non-blocking buffered
+     * implementation, e.g. unistd or Arduino.
+     *
+     *   https://linux.die.net/man/2/read
+     *   https://linux.die.net/man/2/write
+     *
+     * The asynchronous API expects a raw hardware implementation
+     * where the buffer must stay allocated during the operation,
+     * e.g. CMSIS USART drivers.
+     *
+     * https://www.keil.com/pack/doc/CMSIS/Driver/html/group__usart__interface__gr.html
+     *
+     * To use the common API provide callbacks for:
+     *  1. read
+     *  2. write
+     *  3. elapsed_ms
+     *
+     * To use the asynchronous API define GSM_ASYNC and provide callbacks for:
+     *  1. receive_async
+     *  2. send_async
+     *  3. rx_count_async
+     *  4. rx_abort_async
+     *  5. elapsed_ms
+     */
     typedef struct {
-        int (*read)(void *data, uint32_t size);         /**< Read 'size' bytes into 'data' from device. */
-        int (*write)(const void *data, uint32_t size);  /**< Write 'size' bytes from 'data' to device. */
-        uint32_t(*elapsed_ms)();                        /**< Return the milliseconds elapsed since initialization. */
+        #if defined(GSM_ASYNC)
+            // Asynchronous API
+            int32_t (*receive_async)(void *data, uint32_t size);    /**< Asynchronously receive 'size' bytes into 'data' from device. */
+            int32_t (*send_async)(const void *data, uint32_t size); /**< Asynchronously send 'size' bytes from 'data' to device. */
+            uint32_t (*rx_count_async)();                           /**< Return the number of bytes received during receive_async. */
+            void (*rx_abort_async)();                               /**< Abort the ongoing asynchronous receive operation. */
+        #else
+            // Common API
+            int (*read)(void *data, uint32_t size);                 /**< Read 'size' bytes into 'data' from stream. */
+            int (*write)(const void *data, uint32_t size);          /**< Write 'size' bytes from 'data' to stream. */
+        #endif
+
+        // Both
+        uint32_t (*elapsed_ms)();                               /**< Return the milliseconds elapsed since initialization. */
     } context_t;
 
     /** State of the device.
@@ -40,9 +85,8 @@ namespace GSM
         init,           /**< SIM is being initialized. */
         locked,         /**< SIM is locked. */
         offline,        /**< No signal. */
-        online,         /**< Network registers the modem. */
         authenticating, /**< Attempting to authenticate with GPRS. */
-        ready,          /**< Connected to GPRS. */
+        online,         /**< Network registers the modem. */
         handshaking,    /**< Attempting to establish TCP connection. */
         open,           /**< TCP socket is open. */
     };
@@ -66,7 +110,7 @@ namespace GSM
              * @param [in] context hardware specific callbacks for the driver
              */
             Modem(context_t *context)
-                : m_ctx(context) {}
+                : m_ctx(context) {};
 
             /** Handle communication with the modem. */
             void process();
@@ -76,7 +120,8 @@ namespace GSM
              * @param [in] dev_cb function to be called.
              * @param [in] user pointer to be passed when dev_cb is called.
              */
-            inline void set_device_callback(void (*dev_cb)(State state, void *user), void *user=nullptr)
+            inline void set_device_callback(
+                void (*dev_cb)(State state, void *user), void *user=nullptr)
             {
                 f_dev_cb = dev_cb;
                 p_dev_cb_user = user;
@@ -87,7 +132,8 @@ namespace GSM
              * @param [in] sock_cb function to be called.
              * @param [in] user pointer to be passed when the function is called.
              */
-            inline void set_socket_callback(void (*sock_cb)(Event event, void *user), void *user=nullptr)
+            inline void set_socket_callback(
+                void (*sock_cb)(Event event, void *user), void *user=nullptr)
             {
                 f_sock_cb = sock_cb;
                 p_sock_cb_user = user;
@@ -102,11 +148,11 @@ namespace GSM
              * @return -EINVAL if inputs are null.
              * @return -ENOBUFS if command buffer is full.
              */
-            int unlock(const void *pin, uint8_t pin_size);
+            int unlock(const void *pin, size_t pin_size);
 
             /** Connect to GPRS.
              *
-             * Must be called in State::online to transition to State::ready.
+             * Must be called in State::offline to transition to State::online.
              *
              * @param [in] apn GPRS access point name.
              * @param [in] apn_size length of 'apn'.
@@ -121,11 +167,14 @@ namespace GSM
              * @return -EISCONN if already connected to GPRS.
              * @return -ENOBUFS if command buffer is full.
              */
-            int authenticate(const void *apn, uint8_t apn_size, const void *user, uint8_t user_size, const void *pwd, uint8_t pwd_size);
+            int authenticate(
+                const void *apn, size_t apn_size,
+                const void *user, size_t user_size,
+                const void *pwd, size_t pwd_size);
 
             /** Connect to GPRS.
              *
-             * Must be called in State::online to transition to State::ready.
+             * Must be called in State::offline to transition to State::online.
              *
              * @param [in] apn GPRS access point name.
              * @param [in] user GPRS user name.
@@ -137,7 +186,7 @@ namespace GSM
              * @return -EISCONN if already connected to GPRS.
              * @return -ENOBUFS if command buffer is full.
              */
-            int authenticate(const char *apn="wholesale", const char *user="", const char *pwd="");
+            int authenticate(const char *apn, const char *user="", const char *pwd="");
 
             /** Open a TCP socket.
              *
@@ -154,7 +203,7 @@ namespace GSM
              * @return -EADDRINUSE if a socket is already open.
              * @return -ENOBUFS if command buffer is full.
              */
-            int connect(const void *host, uint8_t host_size, uint16_t port);
+            int connect(const void *host, size_t host_size, int port);
 
             /** Open a TCP socket.
              *
@@ -170,7 +219,7 @@ namespace GSM
              * @return -EADDRINUSE if a socket is already open.
              * @return -ENOBUFS if command buffer is full.
              */
-            int connect(const char *host, uint16_t port);
+            int connect(const char *host, int port);
 
             /** Close TCP socket.
              *
@@ -201,7 +250,7 @@ namespace GSM
              * @result Event::rx_error if the read fails.
              * @see set_socket_callback
              */
-            void receive(void *data, uint32_t size);
+            void receive(void *data, size_t size);
 
             /** Cancel an ongoing receive() call.
              *
@@ -214,7 +263,7 @@ namespace GSM
              * @param [in] data buffer to write.
              * @param [in] size number of bytes to write.
              */
-            void send(const void *data, uint32_t size);
+            void send(const void *data, size_t size);
 
             /** Cancel an ongoing send() call.
              *
@@ -224,7 +273,7 @@ namespace GSM
             void stop_send();
 
             /** Number of bytes available in the modem's buffer. */
-            inline size_t rx_available()
+            inline int rx_available()
             {
                 return m_rx_available;
             }
@@ -234,7 +283,7 @@ namespace GSM
              * Buffers larger than this will be automatically broken up
              * and sent over multiple transfers.
              */
-            inline size_t tx_available()
+            inline int tx_available()
             {
                 return m_tx_available;
             }
@@ -295,6 +344,7 @@ namespace GSM
            {
                return m_rssi;
            }
+        protected:
 
         private:
             /** State of data transmission when socket is open. */
@@ -306,23 +356,31 @@ namespace GSM
                 cts,    /**< Data is being written from the send buffer. */
             };
 
-            /** Update the device state and call 'f_dev_cb'. */
-            void set_state(State state);
+            /** Queue a formatted command string.
+             *
+             * @param [in] timeout maximum time to wait for a response.
+             * @param [in] command standard c format string.
+             * @param [in] ... arguments for command formatting.
+             */
+            int queue_command(uint32_t timeout, const char *command, ...);
 
-            /** State functions called by process.
+            /** Send an appropriate polling message based on the modem's state. */
+            void poll_modem();
+
+            /** State logic called by process.
              * @{
              */
             void _process_reset();
-            void _process_init_locked();
+            void _process_init();
+            void _process_locked();
             void _process_offline();
-            void _process_online();
             void _process_authenticating();
-            void _process_ready();
+            void _process_online();
             void _process_handshaking();
             void _process_open();
             /** @} */
 
-            /** State functions called in State::open.
+            /** Socket logic called in State::open.
              * @{
              */
             void _socket_idle();
@@ -331,6 +389,17 @@ namespace GSM
             void _socket_rts();
             void _socket_cts();
             /** @} */
+
+            /** Update the device state and call 'f_dev_cb'.
+             *
+             * @param [in] state new device state.
+             */
+            inline void set_state(State state)
+            {
+                m_device_state = state;
+                if(f_dev_cb)
+                    f_dev_cb(m_device_state, p_dev_cb_user);
+            }
 
             /** Driver operating context. */
             context_t const *m_ctx;
@@ -347,25 +416,35 @@ namespace GSM
             void *p_sock_cb_user = nullptr;
             /**@}*/
 
+            char m_modem_id[ID_SIZE] = {};                  /**< Holds the response from ATI. */
+            int m_rssi = 99;                                /**< Signal rssi value reported by AT+CSQ. */
+
             Buffer m_cmd_buffer;                            /**< Queued commands to send. */
             command_t *m_pending = nullptr;                 /**< Most recent command awaiting response. */
             uint32_t m_command_timer = 0;                   /**< Time the pending command will expire. */
             uint32_t m_update_timer = 0;                    /**< Time of the next state update. */
-            State m_device_state = State::reset;             /**< State of the modem. */
+            State m_device_state = State::reset;            /**< State of the modem. */
             SocketState m_socket_state = SocketState::idle; /**< State of data transmission through the socket. */
-            uint8_t m_rssi = 99;                            /**< Signal rssi value reported by AT+CSQ. */
-            uint8_t m_errors = 0;                           /**< Timeout error counter.  If it exceeds MAX_ERRORS call reset(). */
-            char m_modem_id[ID_SIZE] = {};                  /**< Holds the response from ATI. */
+            int m_auth_state = 0;                           /**< State of the authentication routine. */
+            int m_errors = 0;                               /**< Timeout error counter.  If it exceeds MAX_ERRORS call reset(). */
+            bool m_sms_ready = false;                       /**< Set to true when 'SMS Ready' is reported. */
+
+            uint8_t m_response[GSM_BUFFER_SIZE] = {};       /**< Modem response buffer. */
+            int m_response_size = 0;                        /**< Size of modem response. */
 
             const uint8_t *m_tx_buffer = nullptr;           /**< User buffer to send from. */
-            size_t m_tx_size = 0;                           /**< Size of 'm_tx_buffer'. */
-            size_t m_tx_count = 0;                          /**< Number of bytes that have been read from 'm_tx_buffer'. */
-            size_t m_tx_available = 0;                      /**< Tracks the space in the modem's tx buffer. */
+            int m_tx_size = 0;                              /**< Size of 'm_tx_buffer'. */
+            int m_tx_count = 0;                             /**< Number of bytes that have been read from 'm_tx_buffer'. */
+            int m_tx_available = 0;                         /**< Tracks the space in the modem's tx buffer. */
 
             uint8_t *m_rx_buffer = nullptr;                 /**< User buffer to receive into. */
-            size_t m_rx_size = 0;                           /**< Size of 'm_rx_buffer'. */
-            size_t m_rx_count = 0;                          /**< Number of bytes that have been written to 'm_rx_buffer'. */
-            size_t m_rx_available = 0;                      /**< Tracks the number of bytes in the modem's rx buffer. */
+            int m_rx_size = 0;                              /**< Size of 'm_rx_buffer'. */
+            int m_rx_count = 0;                             /**< Number of bytes that have been written to 'm_rx_buffer'. */
+            int m_rx_available = 0;                         /**< Tracks the number of bytes in the modem's rx buffer. */
+
+            char m_apn[256] = {};                           /**< Holds the 'Access Point Name' for authenticate. */
+            char m_user[266] = {};                          /**< Holds the 'Username' for authenticate. */
+            char m_pwd[266] = {};                           /**< Holds the 'Password' for authenticate. */
     };
 }
 
