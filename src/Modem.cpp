@@ -381,7 +381,6 @@ namespace GSM
         m_tx_available = 0;
         m_modem_id[0] = '\0';
         m_auth_state = 0;
-        m_sms_ready = false;
 
         set_state(State::reset);
     }
@@ -446,7 +445,7 @@ namespace GSM
                 queue_command(1000, "ATI\r\n");
                 break;
             case State::locked:
-                // AT+CPIN? - unlock status
+                // AT+CPIN? - SIM status
                 queue_command(5000, "AT+CPIN?\r\n");
                 break;
             case State::offline:
@@ -498,14 +497,14 @@ namespace GSM
 
             const int id_size = (id_end - id_start);
             memcpy(m_modem_id, id_start, std::min(id_size, ID_SIZE));
-            m_sms_ready = false;
 
             GSM_INFO("Modem is: %s\n", m_modem_id);
 
             // AT&F0 - reset to factory defaults
             // AT+CLTS=1 - enable local timestamps
             // AT+CFUN=1,1 - reset phone module
-            queue_command(10000, "AT&F0;+CLTS=1;+CFUN=1,1\r\n");
+            // AT+CPIN? - SIM status
+            queue_command(10000, "AT&F0;+CLTS=1;+CFUN=1,1;+CPIN?\r\n");
 
             GSM_INFO("Initializing...\n");
             set_state(State::init);
@@ -514,33 +513,23 @@ namespace GSM
 
     void Modem::_process_init()
     {
-        if(m_sms_ready) {
-            if(memstr(m_response, "OK\r\n", m_response_size) == nullptr)
-                return;
+        if(memstr(m_response, "OK\r\n", m_response_size) == nullptr)
+            return;
 
-            m_pending = nullptr;
-            m_cmd_buffer.pop();
-            m_errors = 0;
+        m_pending = nullptr;
+        m_cmd_buffer.pop();
+        m_errors = 0;
 
-            if(memstr(m_response, "+CPIN: SIM PIN", m_response_size)
-            || memstr(m_response, "+CPIN: SIM PUK", m_response_size)) {
-                GSM_INFO("SIM locked\n");
-                set_state(State::locked);
-                return;
-            }
-            else if(memstr(m_response, "+CPIN: READY", m_response_size)) {
-                GSM_INFO("SIM ready\n");
-                set_state(State::offline);
-                return;
-            }
+        if(memstr(m_response, "+CPIN: SIM PIN", m_response_size)
+        || memstr(m_response, "+CPIN: SIM PUK", m_response_size)) {
+            GSM_INFO("SIM locked\n");
+            set_state(State::locked);
+            return;
         }
-        else if(memstr(m_response, "SMS Ready", m_response_size)) {
-            GSM_INFO("SMS ready\n");
-            m_pending = nullptr;
-            m_cmd_buffer.pop();
-            m_sms_ready = true;
-
-            queue_command(5000, "AT+CPIN?\r\n");
+        else if(memstr(m_response, "+CPIN: READY", m_response_size)) {
+            GSM_INFO("SIM ready\n");
+            set_state(State::offline);
+            return;
         }
     }
 
@@ -554,10 +543,8 @@ namespace GSM
         m_errors = 0;
 
         if(memstr(m_response, "+CPIN: READY", m_response_size)) {
-            if(m_sms_ready) {
-                GSM_INFO("Modem ready\n");
-                set_state(State::offline);
-            }
+            GSM_INFO("Modem ready\n");
+            set_state(State::offline);
         }
     }
 

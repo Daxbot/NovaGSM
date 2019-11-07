@@ -427,7 +427,6 @@ namespace GSM
             SocketState m_socket_state = SocketState::idle; /**< State of data transmission through the socket. */
             int m_auth_state = 0;                           /**< State of the authentication routine. */
             int m_errors = 0;                               /**< Timeout error counter.  If it exceeds MAX_ERRORS call reset(). */
-            bool m_sms_ready = false;                       /**< Set to true when 'SMS Ready' is reported. */
 
             uint8_t m_response[GSM_BUFFER_SIZE] = {};       /**< Modem response buffer. */
             int m_response_size = 0;                        /**< Size of modem response. */
