@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['data',['data',['../structGSM_1_1command__t.html#a8b61fb0457e7d2e462534c3ee14b6804',1,'GSM::command_t']]]
+  ['elapsed_5fms',['elapsed_ms',['../structGSM_1_1context__t.html#a020a568b38704ee9243fa922cabdde54',1,'GSM::context_t']]]
 ];

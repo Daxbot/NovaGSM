@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['size',['size',['../structGSM_1_1command__t.html#ac1a3b9982bd05c5edd1d7f66d6af9945',1,'GSM::command_t']]]
+  ['timeout_5fms',['timeout_ms',['../structGSM_1_1command__t.html#a0e6eb5c99390519dcea75c95e6398b3c',1,'GSM::command_t']]]
 ];

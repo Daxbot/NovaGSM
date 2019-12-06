@@ -88,17 +88,18 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="enum-members"></a>
 Enumerations</h2></td></tr>
 <tr class="memitem:aa0bb04b33d82d6775e86839f51bc32a6"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6">State</a> { <br />
-&#160;&#160;<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a86266ee937d97f812a8e57d22b62ee29">State::reset</a>, 
+&#160;&#160;<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a075ae3d2fc31640504f814f60e5ef713">State::disabled</a>, 
+<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a86266ee937d97f812a8e57d22b62ee29">State::reset</a>, 
 <a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6ae37f0136aa3ffaf149b351f6a4c948e9">State::init</a>, 
 <a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a4cef2f30ac7d33419d00c1d93a090095">State::locked</a>, 
-<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a27a21354321dfbc28f0cb17b995bb9ca">State::offline</a>, 
 <br />
-&#160;&#160;<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a7f46165474d11ee5836777d85df2cdab">State::online</a>, 
+&#160;&#160;<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a27a21354321dfbc28f0cb17b995bb9ca">State::offline</a>, 
+<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a7f46165474d11ee5836777d85df2cdab">State::online</a>, 
 <a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a3d5d0f5c7a6b281da0b22f8c128fb20e">State::authenticating</a>, 
 <a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6ab2fdab230a2c39f3595a947861863cb7">State::ready</a>, 
-<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a19483675c94dd990882c3c65a5a6edbe">State::handshaking</a>, 
 <br />
-&#160;&#160;<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a7cef8a734855777c2a9d0caf42666e69">State::open</a>
+&#160;&#160;<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a19483675c94dd990882c3c65a5a6edbe">State::handshaking</a>, 
+<a class="el" href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a7cef8a734855777c2a9d0caf42666e69">State::open</a>
 <br />
  }<tr class="memdesc:aa0bb04b33d82d6775e86839f51bc32a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">State of the device.  <a href="namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6">More...</a><br /></td></tr>
 </td></tr>
@@ -119,18 +120,24 @@ Enumerations</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:a91f735112265837517f09e3fcca54834"><td class="memItemLeft" align="right" valign="top">constexpr size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a91f735112265837517f09e3fcca54834">POOL_SIZE</a> = <a class="el" href="Buffer_8h.html#ae1d954f58566975b53de8b0d673667ea">GSM_POOL_SIZE</a></td></tr>
-<tr class="memdesc:a91f735112265837517f09e3fcca54834"><td class="mdescLeft">&#160;</td><td class="mdescRight">The maximum number of queued commands.  <a href="#a91f735112265837517f09e3fcca54834">More...</a><br /></td></tr>
-<tr class="separator:a91f735112265837517f09e3fcca54834"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9fe4e7aefab4f4f72748890a4318a6d"><td class="memItemLeft" align="right" valign="top">constexpr size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#ab9fe4e7aefab4f4f72748890a4318a6d">BUFFER_SIZE</a> = <a class="el" href="Buffer_8h.html#a2296904deb3f718b18ada1f34e908eef">GSM_BUFFER_SIZE</a></td></tr>
-<tr class="memdesc:ab9fe4e7aefab4f4f72748890a4318a6d"><td class="mdescLeft">&#160;</td><td class="mdescRight">The maximum size of a command.  <a href="#ab9fe4e7aefab4f4f72748890a4318a6d">More...</a><br /></td></tr>
-<tr class="separator:ab9fe4e7aefab4f4f72748890a4318a6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a50b838e417256b83dd9b6e2c9a7900c3"><td class="memItemLeft" align="right" valign="top">constexpr size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a50b838e417256b83dd9b6e2c9a7900c3">TIMEOUT_MS</a> = 200</td></tr>
-<tr class="memdesc:a50b838e417256b83dd9b6e2c9a7900c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">How long to wait for a command response.  <a href="#a50b838e417256b83dd9b6e2c9a7900c3">More...</a><br /></td></tr>
-<tr class="separator:a50b838e417256b83dd9b6e2c9a7900c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6732b010eb945cd757cb983c6ff3f402"><td class="memItemLeft" align="right" valign="top">constexpr size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a6732b010eb945cd757cb983c6ff3f402">ID_SIZE</a> = 20</td></tr>
-<tr class="memdesc:a6732b010eb945cd757cb983c6ff3f402"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of the buffer to store the modem ID.  <a href="#a6732b010eb945cd757cb983c6ff3f402">More...</a><br /></td></tr>
-<tr class="separator:a6732b010eb945cd757cb983c6ff3f402"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4a17013b3c45e1ef843000fdc0a4cadd"><td class="memItemLeft" align="right" valign="top">constexpr uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a4a17013b3c45e1ef843000fdc0a4cadd">DEFAULT_TIMEOUT_MS</a> = 200</td></tr>
+<tr class="memdesc:a4a17013b3c45e1ef843000fdc0a4cadd"><td class="mdescLeft">&#160;</td><td class="mdescRight">How long to wait for a command response.  <a href="#a4a17013b3c45e1ef843000fdc0a4cadd">More...</a><br /></td></tr>
+<tr class="separator:a4a17013b3c45e1ef843000fdc0a4cadd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aef11e04d4158ac8491f01b92c0bcb8a6"><td class="memItemLeft" align="right" valign="top">constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#aef11e04d4158ac8491f01b92c0bcb8a6">MAJOR_VERSION</a> = 3</td></tr>
+<tr class="memdesc:aef11e04d4158ac8491f01b92c0bcb8a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Major version, increment for breaking changes.  <a href="#aef11e04d4158ac8491f01b92c0bcb8a6">More...</a><br /></td></tr>
+<tr class="separator:aef11e04d4158ac8491f01b92c0bcb8a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a056a301c19948aabb6ca5502e0e62657"><td class="memItemLeft" align="right" valign="top">constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a056a301c19948aabb6ca5502e0e62657">MINOR_VERSION</a> = 0</td></tr>
+<tr class="memdesc:a056a301c19948aabb6ca5502e0e62657"><td class="mdescLeft">&#160;</td><td class="mdescRight">Minor version, increment for non-breaking changes.  <a href="#a056a301c19948aabb6ca5502e0e62657">More...</a><br /></td></tr>
+<tr class="separator:a056a301c19948aabb6ca5502e0e62657"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a75bfd20e170a64a610686c0553f95ae9"><td class="memItemLeft" align="right" valign="top">constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a75bfd20e170a64a610686c0553f95ae9">VERSION</a> = (<a class="el" href="namespaceGSM.html#aef11e04d4158ac8491f01b92c0bcb8a6">MAJOR_VERSION</a> * 100) + <a class="el" href="namespaceGSM.html#a056a301c19948aabb6ca5502e0e62657">MINOR_VERSION</a></td></tr>
+<tr class="memdesc:a75bfd20e170a64a610686c0553f95ae9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Library version.  <a href="#a75bfd20e170a64a610686c0553f95ae9">More...</a><br /></td></tr>
+<tr class="separator:a75bfd20e170a64a610686c0553f95ae9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa0299307755416c167b9c0b63c17d190"><td class="memItemLeft" align="right" valign="top">constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#aa0299307755416c167b9c0b63c17d190">ID_SIZE</a> = 20</td></tr>
+<tr class="memdesc:aa0299307755416c167b9c0b63c17d190"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of the buffer to store the modem ID.  <a href="#aa0299307755416c167b9c0b63c17d190">More...</a><br /></td></tr>
+<tr class="separator:aa0299307755416c167b9c0b63c17d190"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3e1b0e26baa576d1110afabe2e9e15ee"><td class="memItemLeft" align="right" valign="top">constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceGSM.html#a3e1b0e26baa576d1110afabe2e9e15ee">SOCKET_MAX</a> = (<a class="el" href="Buffer_8h.html#a2296904deb3f718b18ada1f34e908eef">GSM_BUFFER_SIZE</a> - 64)</td></tr>
+<tr class="memdesc:a3e1b0e26baa576d1110afabe2e9e15ee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum size of socket data transfers.  <a href="#a3e1b0e26baa576d1110afabe2e9e15ee">More...</a><br /></td></tr>
+<tr class="separator:a3e1b0e26baa576d1110afabe2e9e15ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Handles buffered communication through a GSM/GPRS modem. </p>
@@ -198,7 +205,9 @@ Variables</h2></td></tr>
 <p>State of the device. </p>
 <dl class="section see"><dt>See also</dt><dd>process() for a functional description. </dd></dl>
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6a86266ee937d97f812a8e57d22b62ee29"></a>reset&#160;</td><td class="fielddoc"><p>None. </p>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6a075ae3d2fc31640504f814f60e5ef713"></a>disabled&#160;</td><td class="fielddoc"><p>Low power mode. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6a86266ee937d97f812a8e57d22b62ee29"></a>reset&#160;</td><td class="fielddoc"><p>Reset. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6ae37f0136aa3ffaf149b351f6a4c948e9"></a>init&#160;</td><td class="fielddoc"><p>SIM is being initialized. </p>
 </td></tr>
@@ -208,7 +217,7 @@ Variables</h2></td></tr>
 </td></tr>
 <tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6a7f46165474d11ee5836777d85df2cdab"></a>online&#160;</td><td class="fielddoc"><p>Network registers the modem. </p>
 </td></tr>
-<tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6a3d5d0f5c7a6b281da0b22f8c128fb20e"></a>authenticating&#160;</td><td class="fielddoc"><p>Attempting to authenticate with GPRS. </p>
+<tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6a3d5d0f5c7a6b281da0b22f8c128fb20e"></a>authenticating&#160;</td><td class="fielddoc"><p>Attempting to establish PDP context. </p>
 </td></tr>
 <tr><td class="fieldname"><a id="aa0bb04b33d82d6775e86839f51bc32a6ab2fdab230a2c39f3595a947861863cb7"></a>ready&#160;</td><td class="fielddoc"><p>Connected to GPRS. </p>
 </td></tr>
@@ -221,30 +230,30 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Variable Documentation</h2>
-<a id="ab9fe4e7aefab4f4f72748890a4318a6d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab9fe4e7aefab4f4f72748890a4318a6d">&#9670;&nbsp;</a></span>BUFFER_SIZE</h2>
+<a id="a4a17013b3c45e1ef843000fdc0a4cadd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4a17013b3c45e1ef843000fdc0a4cadd">&#9670;&nbsp;</a></span>DEFAULT_TIMEOUT_MS</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">constexpr size_t GSM::BUFFER_SIZE = <a class="el" href="Buffer_8h.html#a2296904deb3f718b18ada1f34e908eef">GSM_BUFFER_SIZE</a></td>
+          <td class="memname">constexpr uint32_t GSM::DEFAULT_TIMEOUT_MS = 200</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>The maximum size of a command. </p>
+<p>How long to wait for a command response. </p>
 
 </div>
 </div>
-<a id="a6732b010eb945cd757cb983c6ff3f402"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6732b010eb945cd757cb983c6ff3f402">&#9670;&nbsp;</a></span>ID_SIZE</h2>
+<a id="aa0299307755416c167b9c0b63c17d190"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa0299307755416c167b9c0b63c17d190">&#9670;&nbsp;</a></span>ID_SIZE</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">constexpr size_t GSM::ID_SIZE = 20</td>
+          <td class="memname">constexpr int GSM::ID_SIZE = 20</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -253,35 +262,68 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a id="a91f735112265837517f09e3fcca54834"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a91f735112265837517f09e3fcca54834">&#9670;&nbsp;</a></span>POOL_SIZE</h2>
+<a id="aef11e04d4158ac8491f01b92c0bcb8a6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aef11e04d4158ac8491f01b92c0bcb8a6">&#9670;&nbsp;</a></span>MAJOR_VERSION</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">constexpr size_t GSM::POOL_SIZE = <a class="el" href="Buffer_8h.html#ae1d954f58566975b53de8b0d673667ea">GSM_POOL_SIZE</a></td>
+          <td class="memname">constexpr int GSM::MAJOR_VERSION = 3</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>The maximum number of queued commands. </p>
+<p>Major version, increment for breaking changes. </p>
 
 </div>
 </div>
-<a id="a50b838e417256b83dd9b6e2c9a7900c3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a50b838e417256b83dd9b6e2c9a7900c3">&#9670;&nbsp;</a></span>TIMEOUT_MS</h2>
+<a id="a056a301c19948aabb6ca5502e0e62657"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a056a301c19948aabb6ca5502e0e62657">&#9670;&nbsp;</a></span>MINOR_VERSION</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">constexpr size_t GSM::TIMEOUT_MS = 200</td>
+          <td class="memname">constexpr int GSM::MINOR_VERSION = 0</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>How long to wait for a command response. </p>
+<p>Minor version, increment for non-breaking changes. </p>
+
+</div>
+</div>
+<a id="a3e1b0e26baa576d1110afabe2e9e15ee"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e1b0e26baa576d1110afabe2e9e15ee">&#9670;&nbsp;</a></span>SOCKET_MAX</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr int GSM::SOCKET_MAX = (<a class="el" href="Buffer_8h.html#a2296904deb3f718b18ada1f34e908eef">GSM_BUFFER_SIZE</a> - 64)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Maximum size of socket data transfers. </p>
+<p>Each data chunk must be less than the actual buffer size to account for protocol overhead. </p>
+
+</div>
+</div>
+<a id="a75bfd20e170a64a610686c0553f95ae9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a75bfd20e170a64a610686c0553f95ae9">&#9670;&nbsp;</a></span>VERSION</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr int GSM::VERSION = (<a class="el" href="namespaceGSM.html#aef11e04d4158ac8491f01b92c0bcb8a6">MAJOR_VERSION</a> * 100) + <a class="el" href="namespaceGSM.html#a056a301c19948aabb6ca5502e0e62657">MINOR_VERSION</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Library version. </p>
 
 </div>
 </div>

@@ -81,13 +81,14 @@ namespace GSM
      * @see process() for a functional description.
      */
     enum class State {
-        reset,          /**< None. */
         disabled,       /**< Low power mode. */
+        reset,          /**< Reset. */
         init,           /**< SIM is being initialized. */
         locked,         /**< SIM is locked. */
         offline,        /**< No signal. */
-        authenticating, /**< Attempting to authenticate with GPRS. */
         online,         /**< Network registers the modem. */
+        authenticating, /**< Attempting to establish PDP context. */
+        ready,          /**< Connected to GPRS. */
         handshaking,    /**< Attempting to establish TCP connection. */
         open,           /**< TCP socket is open. */
     };
@@ -146,6 +147,7 @@ namespace GSM
              *
              * @param [in] pin SIM card password
              * @param [in] pin_size length of 'pin'.
+             *
              * @return -EINVAL if inputs are null.
              * @return -ENOBUFS if command buffer is full.
              */
@@ -153,7 +155,7 @@ namespace GSM
 
             /** Connect to GPRS.
              *
-             * Must be called in State::offline to transition to State::online.
+             * Must be called in State::online to transition to State::ready.
              *
              * @param [in] apn GPRS access point name.
              * @param [in] apn_size length of 'apn'.
@@ -161,7 +163,8 @@ namespace GSM
              * @param [in] user_size length of 'user'.
              * @param [in] pwd GPRS password.
              * @param [in] pwd_size length of 'pwd'.
-             * @return -EINVAL if inputs are null.
+             *
+             * @return -EINVAL if inputs are invalid.
              * @return -ENODEV if the device is not responding.
              * @return -ENETUNREACH if the network is not available.
              * @return -EALREADY if authentication is already in progress.
@@ -175,12 +178,13 @@ namespace GSM
 
             /** Connect to GPRS.
              *
-             * Must be called in State::offline to transition to State::online.
+             * Must be called in State::online to transition to State::ready.
              *
              * @param [in] apn GPRS access point name.
              * @param [in] user GPRS user name.
              * @param [in] pwd GPRS password.
-             * @return -EINVAL if inputs are null.
+             *
+             * @return -EINVAL if inputs are invalid.
              * @return -ENODEV if the device is not responding.
              * @return -ENETUNREACH if the network is not available.
              * @return -EALREADY if authentication is already in progress.
@@ -191,7 +195,7 @@ namespace GSM
 
             /** Open a TCP socket.
              *
-             * Must be in State::connected, transitions to State::open.
+             * Must be in State::ready, transitions to State::open.
              *
              * @param [in] host server ip address.
              * @param [in] host_size length of 'host'.
@@ -208,7 +212,7 @@ namespace GSM
 
             /** Open a TCP socket.
              *
-             * Must be in State::connected, transitions to State::open.
+             * Must be in State::ready, transitions to State::open.
              *
              * @param [in] host server ip address.
              * @param [in] port server port number.
@@ -242,6 +246,9 @@ namespace GSM
              * Use reset() to restore full functionality.
              *
              * @param [in] timeout_ms maximum time method should block; 0=inf.
+             *
+             * @return -ENODEV if the device is not responsive.
+             * @return -ETIME if the timeout is exceeded.
              */
             int disable(uint32_t timeout_ms=0);
 
@@ -255,8 +262,7 @@ namespace GSM
              *
              * @param [out] data buffer to read into.
              * @param [in] size number of bytes to read.
-             * @result Event::rx_complete if size bytes read.
-             * @result Event::rx_error if the read fails.
+             *
              * @see set_socket_callback
              */
             void receive(void *data, size_t size);
@@ -383,8 +389,9 @@ namespace GSM
             void _process_init();
             void _process_locked();
             void _process_offline();
-            void _process_authenticating();
             void _process_online();
+            void _process_authenticating();
+            void _process_ready();
             void _process_handshaking();
             void _process_open();
             /** @} */
@@ -433,7 +440,7 @@ namespace GSM
             uint32_t m_command_timer = 0;                   /**< Time the pending command will expire. */
             uint32_t m_update_timer = 0;                    /**< Time of the next state update. */
             State m_device_state = State::reset;            /**< State of the modem. */
-            SocketState m_socket_state = SocketState::idle; /**< State of data transmission through the socket. */
+            SocketState m_sock_state = SocketState::idle;   /**< State of data transmission through the socket. */
             int m_auth_state = 0;                           /**< State of the authentication routine. */
             int m_errors = 0;                               /**< Timeout error counter.  If it exceeds MAX_ERRORS call reset(). */
 

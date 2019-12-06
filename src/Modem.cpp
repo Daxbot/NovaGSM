@@ -20,6 +20,7 @@
  *
  * @dot
  * digraph {
+ *     reset -> disabled            [ label = "disable()" ];
  *     reset -> init                [ label = "ATI" ];
  *     init -> reset                [ label = "reset()" ];
  *     init -> locked               [ label = "SIM locked" ];
@@ -27,17 +28,20 @@
  *     locked -> reset              [ label = "reset()" ];
  *     locked -> offline            [ label = "unlock()" ];
  *     offline -> reset             [ label = "reset()" ];
- *     offline -> authenticating    [ label = "authenticate()" ];
- *     authenticating -> offline    [ label = "error/\ntimeout" ];
- *     authenticating -> online     [ label = "OK" ];
+ *     offline -> online            [ label = "" ];
  *     online -> reset              [ label = "reset()" ];
- *     online -> offline            [ label = "lost\nsignal" ];
- *     online -> handshaking        [ label = "connect()" ];
- *     handshaking -> online        [ label = "error/\ntimeout" ];
+ *     online -> offline            [ label = "" ];
+ *     online -> authenticating     [ label = "authenticate()" ];
+ *     authenticating -> online     [ label = "error/\ntimeout" ];
+ *     authenticating -> ready      [ label = "OK" ];
+ *     ready -> reset               [ label = "reset()" ];
+ *     ready -> offline             [ label = "lost\nsignal" ];
+ *     ready -> handshaking         [ label = "connect()" ];
+ *     handshaking -> ready         [ label = "error/\ntimeout" ];
  *     handshaking -> open          [ label = "OK" ];
  *     open -> reset                [ label = "reset()" ];
  *     open -> offline              [ label = "lost\nsignal" ];
- *     open -> online               [ label = "disconnect()" ];
+ *     open -> ready                [ label = "disconnect()" ];
  * }
  * @enddot
  */
@@ -104,13 +108,13 @@ namespace GSM
                         GSM_WARN("Authentication timeout.\n");
                         m_pending = nullptr;
                         m_cmd_buffer.clear();
-                        set_state(State::offline);
+                        set_state(State::online);
                         return;
                     case State::handshaking:
                         GSM_WARN("TCP connection timeout.\n");
                         m_pending = nullptr;
                         m_cmd_buffer.clear();
-                        set_state(State::online);
+                        set_state(State::ready);
                         return;
                     case State::open:
                         GSM_WARN("Socket timeout\n");
@@ -122,9 +126,9 @@ namespace GSM
                             m_cmd_buffer.pop();
 
                             if(f_sock_cb) {
-                                if(m_socket_state == SocketState::cts)
+                                if(m_sock_state == SocketState::cts)
                                     f_sock_cb(Event::tx_error, p_sock_cb_user);
-                                else if(m_socket_state == SocketState::rtr)
+                                else if(m_sock_state == SocketState::rtr)
                                     f_sock_cb(Event::rx_error, p_sock_cb_user);
                             }
                         }
@@ -182,19 +186,26 @@ namespace GSM
                         _process_locked();
                         break;
                     case State::offline:
-                        /** State::offline - wait for authenticate() to
-                         * transition to State::authenticating.
+                        /** State::offline - wait for a signal and transition
+                         * to State::online.
                          */
                         _process_offline();
                         break;
+                    case State::online:
+                        /** State::online - registered on network, wait for
+                         * authenticate() to transition to
+                         * State::authenticating.
+                         */
+                        _process_online();
+                        break;
                     case State::authenticating:
                         /** State::authenticating - handle authenticate() and
-                         * transition to State::online on success.
+                         * transition to State::ready on success.
                          */
                         _process_authenticating();
                         break;
-                    case State::online:
-                        /** State::online - authenticated with GPRS, wait for
+                    case State::ready:
+                        /** State::ready - authenticated with GPRS, wait for
                          * connect() to transition to State::handshaking.
                          */
                         _process_online();
@@ -254,31 +265,40 @@ namespace GSM
         const void *pwd,
         size_t pwd_size)
     {
-        if(apn == nullptr || user == nullptr || pwd == nullptr)
-            return -EINVAL;
-
         switch(m_device_state) {
             // Invalid state, return error
+            case State::disabled:
             case State::reset:
                 return -ENODEV;
             case State::init:
             case State::locked:
+            case State::offline:
                 return -ENETUNREACH;
             case State::authenticating:
                 return -EALREADY;
             case State::handshaking:
-            case State::online:
+            case State::ready:
             case State::open:
                 return -EISCONN;
 
             // Continue
-            case State::offline:
+            case State::online:
                 break;
         }
 
-        sprintf(m_apn, "%.*s", apn_size, static_cast<const char *>(apn));
-        sprintf(m_user, "%.*s", user_size, static_cast<const char *>(user));
-        sprintf(m_pwd, "%.*s", pwd_size, static_cast<const char *>(pwd));
+        m_apn[0] = '\0';
+        m_user[0] = '\0';
+        m_pwd[0] = '\0';
+
+        if(apn && apn_size > 0)
+            sprintf(m_apn, "%.*s", apn_size, static_cast<const char *>(apn));
+
+        if(user && user_size > 0)
+            sprintf(m_user, "%.*s", user_size, static_cast<const char *>(user));
+
+        if(pwd && pwd_size > 0)
+            sprintf(m_pwd, "%.*s", pwd_size, static_cast<const char *>(pwd));
+
         m_auth_state = 0;
 
         // AT+CIPSHUT - deactivate GPRS PDP context
@@ -293,7 +313,10 @@ namespace GSM
 
     int Modem::authenticate(const char *apn, const char *user, const char *pwd)
     {
-        return authenticate(apn, strlen(apn), user, strlen(user), pwd, strlen(pwd));
+        return authenticate(
+            apn, (apn) ? strlen(apn) : 0,
+            user, (user) ? strlen(user) : 0,
+            pwd, (pwd) ? strlen(pwd) : 0);
     }
 
     int Modem::connect(const void *host, size_t host_size, int port)
@@ -310,6 +333,7 @@ namespace GSM
             case State::locked:
             case State::offline:
                 return -ENETUNREACH;
+            case State::online:
             case State::authenticating:
                 return -ENOTCONN;
             case State::handshaking:
@@ -318,7 +342,7 @@ namespace GSM
                 return -EADDRINUSE;
 
             // Continue
-            case State::online:
+            case State::ready:
                 break;
         }
 
@@ -336,7 +360,7 @@ namespace GSM
 
     int Modem::connect(const char *host, int port)
     {
-        return connect(host, strlen(host), port);
+        return connect(host, (host) ? strlen(host) : 0, port);
     }
 
     int Modem::disconnect()
@@ -353,6 +377,7 @@ namespace GSM
             case State::online:
             case State::authenticating:
             case State::handshaking:
+            case State::ready:
                 return -ENOTSOCK;
 
             // Continue
@@ -379,7 +404,7 @@ namespace GSM
         m_pending = nullptr;
         m_command_timer = 0;
         m_update_timer = 0;
-        m_socket_state = SocketState::idle;
+        m_sock_state = SocketState::idle;
         m_rssi = 99;
         m_errors = 0;
         m_rx_buffer = nullptr;
@@ -413,7 +438,7 @@ namespace GSM
 
             if(!m_pending && m_cmd_buffer.empty()) {
                 GSM_WARN("Failed to disable modem - no response.");
-                return -EIO;
+                return -ENODEV;
             }
 
             process();
@@ -481,24 +506,25 @@ namespace GSM
                 // ATI - device identification
                 queue_command(1000, "ATI\r\n");
                 break;
+            case State::init:
             case State::locked:
                 // AT+CPIN? - SIM status
                 queue_command(5000, "AT+CPIN?\r\n");
                 break;
             case State::offline:
+            case State::online:
                 // AT+CREG? - network registration status
                 // AT+CSQ - signal quality report
-                queue_command(DEFAULT_TIMEOUT_MS, "AT+CREG?;+CSQ\r\n");
+                queue_command(1000, "AT+CREG?;+CSQ\r\n");
                 break;
-            case State::online:
+            case State::ready:
                 // AT+CGATT? - state of GPRS attachment
                 // AT+CSQ - signal quality report
                 queue_command(75000, "AT+CGATT?;+CSQ\r\n");
-                break;
             case State::open:
                 // AT+CIPSTATUS - TCP connection status
                 queue_command(1000, "AT+CIPSTATUS\r\n");
-                m_socket_state = SocketState::idle;
+                m_sock_state = SocketState::idle;
                 break;
             default:
                 break;
@@ -546,42 +572,54 @@ namespace GSM
             GSM_INFO("Initializing...\n");
             set_state(State::init);
         }
+
+        // Handle disable()
+        if(memstr(m_response, "+CFUN=0", m_response_size) != nullptr)
+            set_state(State::disabled);
     }
 
     void Modem::_process_init()
     {
-        if(memstr(m_response, "OK\r\n", m_response_size) == nullptr)
-            return;
+        uint8_t *p_data = static_cast<uint8_t*>(
+            memstr(m_response, "+CPIN:", m_response_size));
 
-        m_pending = nullptr;
-        m_cmd_buffer.pop();
-        m_errors = 0;
+        if(p_data) {
+            const uint8_t size = m_response_size - (p_data - m_response);
 
-        if(memstr(m_response, "+CPIN: SIM PIN", m_response_size)
-        || memstr(m_response, "+CPIN: SIM PUK", m_response_size)) {
-            GSM_INFO("SIM locked\n");
-            set_state(State::locked);
-            return;
-        }
-        else if(memstr(m_response, "+CPIN: READY", m_response_size)) {
-            GSM_INFO("SIM ready\n");
-            set_state(State::offline);
-            return;
+            m_pending = nullptr;
+            m_cmd_buffer.pop();
+            m_errors = 0;
+
+            if(memstr(p_data, "SIM PIN", size)
+            || memstr(p_data, "SIM PUK", size)) {
+                GSM_INFO("SIM locked\n");
+                set_state(State::locked);
+                return;
+            }
+            else if(memstr(p_data, "READY", size)) {
+                GSM_INFO("SIM ready\n");
+                set_state(State::offline);
+                return;
+            }
         }
     }
 
     void Modem::_process_locked()
     {
-        if(memstr(m_response, "OK\r\n", m_response_size) == nullptr)
-            return;
+        uint8_t *p_data = static_cast<uint8_t*>(
+            memstr(m_response, "+CPIN:", m_response_size));
 
-        m_pending = nullptr;
-        m_cmd_buffer.pop();
-        m_errors = 0;
+        if(p_data) {
+            const uint8_t size = m_response_size - (p_data - m_response);
 
-        if(memstr(m_response, "+CPIN: READY", m_response_size)) {
-            GSM_INFO("Modem ready\n");
-            set_state(State::offline);
+            m_pending = nullptr;
+            m_cmd_buffer.pop();
+            m_errors = 0;
+
+            if(memstr(p_data, "READY", size)) {
+                GSM_INFO("Modem ready\n");
+                set_state(State::offline);
+            }
         }
     }
 
@@ -629,6 +667,50 @@ namespace GSM
         }
     }
 
+    void Modem::_process_online()
+    {
+        if(memstr(m_response, "OK\r\n", m_response_size) == nullptr)
+            return;
+
+        m_pending = nullptr;
+        m_cmd_buffer.pop();
+        m_errors = 0;
+
+        uint8_t *p_data = static_cast<uint8_t*>(
+            memstr(m_response, "+CREG:", m_response_size));
+
+        if(p_data) {
+            const uint8_t size = m_response_size - (p_data - m_response);
+            char const *data = static_cast<char*>(memchr(p_data, ',', size)) + 1;
+
+            // +CREG: %d,%d,%s,%s\r\n
+            // │         │
+            // │         └ data
+            // └ p_data
+
+            const uint8_t status = strtol(data, nullptr, 10);
+            if(status != 1 && status != 5) {
+                GSM_INFO("Modem offline\n");
+                set_state(State::offline);
+            }
+        }
+
+        p_data = static_cast<uint8_t*>(
+            memstr(m_response, "+CSQ:", m_response_size));
+
+        if(p_data) {
+            const uint8_t size = m_response_size - (p_data - m_response);
+            char const *data = static_cast<char*>(memchr(p_data, ':', size)) + 1;
+
+            // +CSQ: %d,%d\r\n
+            // │    │
+            // │    └ data
+            // └ p_data
+
+            m_rssi = strtol(data, nullptr, 10);
+        }
+    }
+
     void Modem::_process_authenticating()
     {
         int ret = 0;
@@ -654,54 +736,56 @@ namespace GSM
                 ret = queue_command(10000, "AT+CGATT=0\r\n");
                 break;
             case 1:
+                // AT+SAPBR=3,1,[tag],[value] - configure bearer
+                ret = queue_command(DEFAULT_TIMEOUT_MS,
+                    "AT+SAPBR=3,1,\"Contype\",\"GPRS\";"
+                    "+SAPBR=3,1,\"APN\",\"%s\";"
+                    "+SAPBR=3,1,\"USER\",\"%s\";"
+                    "+SAPBR=3,1,\"PWD\",\"%s\";\r\n",
+                    m_apn, m_user, m_pwd);
+                break;
+            case 2:
                 // AT+CGDCONT=1,[type],[apn] - define GPRS PDP context
                 ret = queue_command(DEFAULT_TIMEOUT_MS,
                     "AT+CGDCONT=1,\"IP\",\"%s\"\r\n", m_apn);
                 break;
-            case 2:
-                // AT+CGACT=1,1 - activate GPRS PDP context
-                ret = queue_command(150000, "AT+CGACT=1,1\r\n", m_apn);
-                break;
             case 3:
-                // AT+SAPBR=3,1,[tag],[value] - configure bearer
-                // AT+SAPBR=1,1 - open bearer
-                ret = queue_command(85000,
-                    "AT+SAPBR=3,1,\"Contype\",\"GPRS\";"
-                    "+SAPBR=3,1,\"APN\",\"%s\";"
-                    "+SAPBR=3,1,\"USER\",\"%s\";"
-                    "+SAPBR=3,1,\"PWD\",\"%s\";"
-                    "+SAPBR=1,1\r\n",
-                    m_apn, m_user, m_pwd);
+                // AT+CGACT=1,1 - activate GPRS PDP context
+                ret = queue_command(150000, "AT+CGACT=1,1\r\n");
                 break;
             case 4:
+                // AT+SAPBR=1,1 - open bearer
+                ret = queue_command(85000, "AT+SAPBR=1,1\r\n");
+                break;
+            case 5:
                 // AT+CGATT=1 - attach to GPRS service
                 ret = queue_command(10000, "AT+CGATT=1\r\n");
                 break;
-            case 5:
+            case 6:
                 // AT+CIPMUX=0 - single IP mode
                 // AT+CIPQSEND=1 - quick send mode
                 // AT+CIPRXGET=1 - manual data mode
                 ret = queue_command(DEFAULT_TIMEOUT_MS,
                     "AT+CIPMUX=0;+CIPQSEND=1;+CIPRXGET=1\r\n");
                 break;
-            case 6:
+            case 7:
                 // AT+CSTT=[apn],[user],[password] - set apn/user/password for GPRS PDP context
                 ret = queue_command(DEFAULT_TIMEOUT_MS,
                     "AT+CSTT=\"%s\",\"%s\",\"%s\"\r\n", m_apn, m_user, m_pwd);
                 break;
-            case 7:
+            case 8:
                 // AT+CIICR - bring up wireless connection
                 ret = queue_command(60000, "AT+CIICR\r\n");
                 break;
-            case 8:
+            case 9:
                 // AT+CIFSR - get local IP address
                 // AT+CDNSCFG=[primary],[secondary] - configure DNS
                 ret = queue_command(10000,
                     "AT+CIFSR;+CDNSCFG=\"8.8.8.8\",\"8.8.4.4\";\r\n");
                 break;
-            case 9:
+            case 10:
                 GSM_INFO("Authentication success\n");
-                set_state(State::online);
+                set_state(State::ready);
                 break;
             default:
                 GSM_ERROR("Bad authentication state index\n");
@@ -715,7 +799,7 @@ namespace GSM
         }
     }
 
-    void Modem::_process_online()
+    void Modem::_process_ready()
     {
         if(memstr(m_response, "OK\r\n", m_response_size) == nullptr)
             return;
@@ -796,12 +880,12 @@ namespace GSM
             stop_send();
             stop_receive();
 
-            m_socket_state = SocketState::idle;
+            m_sock_state = SocketState::idle;
             set_state(State::online);
             return;
         }
 
-        switch(m_socket_state) {
+        switch(m_sock_state) {
             case SocketState::idle:
                 /** SocketState::idle - no active data transfer, handle send()
                  * and receive(). Also poll connection status.
@@ -851,7 +935,7 @@ namespace GSM
                 m_command_timer = m_ctx->elapsed_ms() + DEFAULT_TIMEOUT_MS;
                 m_response_size = 0;
 
-                m_socket_state = SocketState::rtr;
+                m_sock_state = SocketState::rtr;
                 return;
             }
 
@@ -880,7 +964,7 @@ namespace GSM
                 m_command_timer = m_ctx->elapsed_ms() + DEFAULT_TIMEOUT_MS;
                 m_response_size = 0;
 
-                m_socket_state = SocketState::rts;
+                m_sock_state = SocketState::rts;
                 return;
             }
 
@@ -891,10 +975,9 @@ namespace GSM
             // AT+CIPRXGET=4 - query socket unread bytes
             // AT+CIPSEND? - query available size of tx buffer
             // AT+CSQ - signal quality report
-            queue_command(DEFAULT_TIMEOUT_MS,
-                "AT+CIPRXGET=4;+CIPSEND?;+CSQ\r\n");
+            queue_command(1000, "AT+CIPRXGET=4;+CIPSEND?;+CSQ\r\n");
 
-            m_socket_state = SocketState::poll;
+            m_sock_state = SocketState::poll;
             return;
         }
         else if(memstr(m_response, "STATE: TCP CLOSED", m_response_size)) {
@@ -906,8 +989,8 @@ namespace GSM
             stop_send();
             stop_receive();
 
-            m_socket_state = SocketState::idle;
-            set_state(State::online);
+            m_sock_state = SocketState::idle;
+            set_state(State::ready);
         }
     }
 
@@ -980,7 +1063,7 @@ namespace GSM
             if(f_sock_cb)
                 f_sock_cb(Event::rx_error, p_sock_cb_user);
 
-            m_socket_state = SocketState::idle;
+            m_sock_state = SocketState::idle;
             return;
         }
 
@@ -1024,7 +1107,7 @@ namespace GSM
                     f_sock_cb(Event::rx_complete, p_sock_cb_user);
             }
 
-            m_socket_state = SocketState::idle;
+            m_sock_state = SocketState::idle;
         }
     }
 
@@ -1037,7 +1120,7 @@ namespace GSM
             if(f_sock_cb)
                 f_sock_cb(Event::tx_error, p_sock_cb_user);
 
-            m_socket_state = SocketState::idle;
+            m_sock_state = SocketState::idle;
             return;
         }
 
@@ -1080,7 +1163,7 @@ namespace GSM
             }
 
             m_command_timer = m_ctx->elapsed_ms() + DEFAULT_TIMEOUT_MS;
-            m_socket_state = SocketState::cts;
+            m_sock_state = SocketState::cts;
         }
     }
 
@@ -1113,7 +1196,7 @@ namespace GSM
                 if(m_tx_count == m_tx_size && f_sock_cb)
                     f_sock_cb(Event::tx_complete, p_sock_cb_user);
 
-                m_socket_state = SocketState::idle;
+                m_sock_state = SocketState::idle;
             }
         }
     }

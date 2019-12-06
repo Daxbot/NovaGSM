@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['new_5fdata',['new_data',['../namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162a701793633b6cb8f1dc66d056bc58f6e9',1,'GSM']]]
+  ['locked',['locked',['../namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a4cef2f30ac7d33419d00c1d93a090095',1,'GSM']]]
 ];

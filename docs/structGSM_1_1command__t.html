@@ -77,64 +77,64 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a64cc05b4be61a7436a6c76db19a5bc8f"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGSM_1_1command__t.html#a64cc05b4be61a7436a6c76db19a5bc8f">timeout_ms</a></td></tr>
-<tr class="memdesc:a64cc05b4be61a7436a6c76db19a5bc8f"><td class="mdescLeft">&#160;</td><td class="mdescRight">How long to wait for a response (milliseconds).  <a href="#a64cc05b4be61a7436a6c76db19a5bc8f">More...</a><br /></td></tr>
-<tr class="separator:a64cc05b4be61a7436a6c76db19a5bc8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac1a3b9982bd05c5edd1d7f66d6af9945"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGSM_1_1command__t.html#ac1a3b9982bd05c5edd1d7f66d6af9945">size</a></td></tr>
-<tr class="memdesc:ac1a3b9982bd05c5edd1d7f66d6af9945"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of message data.  <a href="#ac1a3b9982bd05c5edd1d7f66d6af9945">More...</a><br /></td></tr>
-<tr class="separator:ac1a3b9982bd05c5edd1d7f66d6af9945"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8b61fb0457e7d2e462534c3ee14b6804"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGSM_1_1command__t.html#a8b61fb0457e7d2e462534c3ee14b6804">data</a> [<a class="el" href="namespaceGSM.html#ab9fe4e7aefab4f4f72748890a4318a6d">BUFFER_SIZE</a>]</td></tr>
-<tr class="memdesc:a8b61fb0457e7d2e462534c3ee14b6804"><td class="mdescLeft">&#160;</td><td class="mdescRight">Message data.  <a href="#a8b61fb0457e7d2e462534c3ee14b6804">More...</a><br /></td></tr>
-<tr class="separator:a8b61fb0457e7d2e462534c3ee14b6804"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab5fbebb24368ec6f36529b1f9e96f0dd"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGSM_1_1command__t.html#ab5fbebb24368ec6f36529b1f9e96f0dd">size</a></td></tr>
+<tr class="memdesc:ab5fbebb24368ec6f36529b1f9e96f0dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of command.  <a href="#ab5fbebb24368ec6f36529b1f9e96f0dd">More...</a><br /></td></tr>
+<tr class="separator:ab5fbebb24368ec6f36529b1f9e96f0dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0e6eb5c99390519dcea75c95e6398b3c"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGSM_1_1command__t.html#a0e6eb5c99390519dcea75c95e6398b3c">timeout_ms</a></td></tr>
+<tr class="memdesc:a0e6eb5c99390519dcea75c95e6398b3c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Response timeout (msec).  <a href="#a0e6eb5c99390519dcea75c95e6398b3c">More...</a><br /></td></tr>
+<tr class="separator:a0e6eb5c99390519dcea75c95e6398b3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a848cd97980ab88c121f34f2b46463d84"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGSM_1_1command__t.html#a848cd97980ab88c121f34f2b46463d84">data</a> [<a class="el" href="Buffer_8h.html#a2296904deb3f718b18ada1f34e908eef">GSM_BUFFER_SIZE</a>]</td></tr>
+<tr class="memdesc:a848cd97980ab88c121f34f2b46463d84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Command buffer.  <a href="#a848cd97980ab88c121f34f2b46463d84">More...</a><br /></td></tr>
+<tr class="separator:a848cd97980ab88c121f34f2b46463d84"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Represents an AT command to be sent. </p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
-<a id="a8b61fb0457e7d2e462534c3ee14b6804"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8b61fb0457e7d2e462534c3ee14b6804">&#9670;&nbsp;</a></span>data</h2>
+<a id="a848cd97980ab88c121f34f2b46463d84"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a848cd97980ab88c121f34f2b46463d84">&#9670;&nbsp;</a></span>data</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">uint8_t GSM::command_t::data[<a class="el" href="namespaceGSM.html#ab9fe4e7aefab4f4f72748890a4318a6d">BUFFER_SIZE</a>]</td>
+          <td class="memname">uint8_t GSM::command_t::data[<a class="el" href="Buffer_8h.html#a2296904deb3f718b18ada1f34e908eef">GSM_BUFFER_SIZE</a>]</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Message data. </p>
+<p>Command buffer. </p>
 
 </div>
 </div>
-<a id="ac1a3b9982bd05c5edd1d7f66d6af9945"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac1a3b9982bd05c5edd1d7f66d6af9945">&#9670;&nbsp;</a></span>size</h2>
+<a id="ab5fbebb24368ec6f36529b1f9e96f0dd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab5fbebb24368ec6f36529b1f9e96f0dd">&#9670;&nbsp;</a></span>size</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">size_t GSM::command_t::size</td>
+          <td class="memname">int GSM::command_t::size</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Size of message data. </p>
+<p>Size of command. </p>
 
 </div>
 </div>
-<a id="a64cc05b4be61a7436a6c76db19a5bc8f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a64cc05b4be61a7436a6c76db19a5bc8f">&#9670;&nbsp;</a></span>timeout_ms</h2>
+<a id="a0e6eb5c99390519dcea75c95e6398b3c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0e6eb5c99390519dcea75c95e6398b3c">&#9670;&nbsp;</a></span>timeout_ms</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">size_t GSM::command_t::timeout_ms</td>
+          <td class="memname">uint32_t GSM::command_t::timeout_ms</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>How long to wait for a response (milliseconds). </p>
+<p>Response timeout (msec). </p>
 
 </div>
 </div>
