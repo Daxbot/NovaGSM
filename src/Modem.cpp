@@ -158,6 +158,11 @@ namespace GSM
 
             if(m_response_size > 4) {
                 switch(m_device_state) {
+                    case State::disabled:
+                        /** State::disabled - modem is set to minimum
+                         * functionality mode. Use reset to restore.
+                         */
+                        break;
                     case State::reset:
                         /** State::reset - Wait for the modem to respond to an
                          * ATI query and transition to State::init.
@@ -298,6 +303,7 @@ namespace GSM
 
         switch(m_device_state) {
             // Invalid state, return error
+            case State::disabled:
             case State::reset:
                 return -ENODEV;
             case State::init:
@@ -337,6 +343,7 @@ namespace GSM
     {
         switch(m_device_state) {
             // Invalid state, return error
+            case State::disabled:
             case State::reset:
                 return -ENODEV;
             case State::init:
@@ -383,6 +390,36 @@ namespace GSM
         m_auth_state = 0;
 
         set_state(State::reset);
+    }
+
+    int Modem::disable(uint32_t timeout_ms)
+    {
+        reset();
+
+        // AT+CFUN=0,1 - reset to minimum functionality mode
+        int ret = queue_command(10000, "AT+CFUN=0\r\n");
+        if(ret != 0)
+            return ret;
+
+        const uint32_t start = m_ctx->elapsed_ms();
+
+        while(status() != State::disabled) {
+            if(timeout_ms > 0) {
+                if((uint32_t)(m_ctx->elapsed_ms() - start) > timeout_ms) {
+                    GSM_WARN("Failed to disable modem - timeout.");
+                    return -ETIME;
+                }
+            }
+
+            if(!m_pending && m_cmd_buffer.empty()) {
+                GSM_WARN("Failed to disable modem - no response.");
+                return -EIO;
+            }
+
+            process();
+        }
+
+        return 0;
     }
 
     void Modem::receive(void *data, size_t size)

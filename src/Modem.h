@@ -82,6 +82,7 @@ namespace GSM
      */
     enum class State {
         reset,          /**< None. */
+        disabled,       /**< Low power mode. */
         init,           /**< SIM is being initialized. */
         locked,         /**< SIM is locked. */
         offline,        /**< No signal. */
@@ -235,6 +236,14 @@ namespace GSM
              * Resets the context and transitions to State::reset.
              */
             void reset();
+
+            /** Enter low power mode (CFUN=0).
+             *
+             * Use reset() to restore full functionality.
+             *
+             * @param [in] timeout_ms maximum time method should block; 0=inf.
+             */
+            int disable(uint32_t timeout_ms=0);
 
             /** Start receiving data.
              *
