@@ -96,8 +96,7 @@ namespace GSM
         if(m_pending) {
             // Command pending - wait for response
             if((int32_t)(elapsed_ms - m_command_timer) > 0) {
-                switch(m_device_state)
-                {
+                switch(m_device_state) {
                     case State::init:
                         GSM_WARN("Initialization timeout.\n");
                         m_pending = nullptr;
@@ -585,6 +584,8 @@ namespace GSM
 
         if(p_data) {
             const uint8_t size = m_response_size - (p_data - m_response);
+            if(memstr(p_data, "\r\n", size) == nullptr)
+                return;
 
             m_pending = nullptr;
             m_cmd_buffer.pop();
@@ -611,6 +612,8 @@ namespace GSM
 
         if(p_data) {
             const uint8_t size = m_response_size - (p_data - m_response);
+            if(memstr(p_data, "\r\n", size) == nullptr)
+                return;
 
             m_pending = nullptr;
             m_cmd_buffer.pop();
