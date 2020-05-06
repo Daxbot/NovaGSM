@@ -49,6 +49,11 @@ namespace GSM
     /** Ring buffer holding queued commands. */
     class Buffer {
         public:
+            Buffer()
+            {
+                memset(pool, 0, (sizeof(command_t) * GSM_QUEUE_SIZE));
+            }
+
             /** Gets the next free command_t struct from the buffer. */
             inline command_t *front()
             {
@@ -113,7 +118,7 @@ namespace GSM
             int tail = 0;   /**< Index of last popped command. */
 
             /** Pre-allocated command_t pool. */
-            command_t pool[GSM_QUEUE_SIZE] = {0};
+            command_t pool[GSM_QUEUE_SIZE];
     };
 }
 
