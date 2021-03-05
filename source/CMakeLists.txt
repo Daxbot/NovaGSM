@@ -1,0 +1,6 @@
+# List source files
+list(APPEND NOVAGSM_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/debug.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/modem.cpp)
+
+set(NOVAGSM_SOURCES ${NOVAGSM_SOURCES} PARENT_SCOPE)

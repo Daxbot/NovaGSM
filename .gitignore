@@ -1,2 +1,4 @@
 examples/linux/a.out
+build/*
 *.o
+*.bak

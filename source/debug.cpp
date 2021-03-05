@@ -1,19 +1,18 @@
-/** Debug printing macros.
- *
+/**
  * @file debug.cpp
+ * @brief Debug printing macros.
  * @author Wilkins White
- * @copyright 2019 Nova Dynamics LLC
- * @version 1.0
+ * @copyright 2019-2021 Nova Dynamics LLC
  */
 
 #include <cstdio>
 #include <stdarg.h>
 #include "debug.h"
 
-#ifdef GSM_DEBUG
+#ifdef NOVAGSM_DEBUG
 
-/** User defined function to print debug strings.
- *
+/**
+ * @brief User defined function to print debug strings.
  * @param [in] level the log level of the message.
  * @param [in] file where in the source the message originated.
  * @param [in] line where in 'file' the message originated.
@@ -21,9 +20,8 @@
  */
 extern void gsm_debug(int level, const char *file, int line, const char *str);
 
-
-/** Handles debug formatting and passes string to user defined function.
- *
+/**
+ * @brief Handles debug formatting and passes string to user defined function.
  * @param [in] level the log level of the message.
  * @param [in] file where in the source the message originated.
  * @param [in] line where in 'file' the message originated.
@@ -31,7 +29,8 @@ extern void gsm_debug(int level, const char *file, int line, const char *str);
  * @see gsm_debug
  * @private
  */
-void gsm_debug_print(int level, const char *file, int line, const char *format, ...)
+void gsm_debug_print(
+    int level, const char *file, int line, const char *format, ...)
 {
     va_list argp;
     char buffer[256];
