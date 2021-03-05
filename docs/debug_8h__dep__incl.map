@@ -1,4 +1,5 @@
-<map id="src/debug.h" name="src/debug.h">
-<area shape="rect" id="node2" href="$debug_8cpp.html" title="Debug printing macros. " alt="" coords="5,80,109,107"/>
-<area shape="rect" id="node3" href="$Modem_8cpp.html" title="Driver for establishing a TCP connection through a standard GSM/GPRS modem using AT commands..." alt="" coords="133,80,245,107"/>
+<map id="include/debug.h" name="include/debug.h">
+<area shape="rect" id="node1" title="Debug printing macros." alt="" coords="93,5,219,32"/>
+<area shape="rect" id="node2" href="$debug_8cpp.html" title="Debug printing macros." alt="" coords="5,80,141,107"/>
+<area shape="rect" id="node3" href="$modem_8cpp.html" title="GSM/GPRS modem driver." alt="" coords="165,80,312,107"/>
 </map>

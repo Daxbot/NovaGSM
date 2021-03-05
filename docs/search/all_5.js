@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['front',['front',['../classGSM_1_1Buffer.html#a841244fd9201b99d263e6239347f45f2',1,'GSM::Buffer']]],
-  ['full',['full',['../classGSM_1_1Buffer.html#ae43fbf0029fe2c84c7332cd25fdd4609',1,'GSM::Buffer']]]
+  ['handshaking_16',['handshaking',['../classgsm_1_1Modem.html#a16a179f6cf9fe46a6462f48fd8eba70a',1,'gsm::Modem::handshaking()'],['../namespacegsm.html#ace30e78eb1507925cadea8aa1619cb50a19483675c94dd990882c3c65a5a6edbe',1,'gsm::handshaking()']]]
 ];

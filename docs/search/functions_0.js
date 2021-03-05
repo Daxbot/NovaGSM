@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['authenticate',['authenticate',['../classGSM_1_1Modem.html#a1a52a54e1b0d57d4906d74f8bc4858a4',1,'GSM::Modem::authenticate(const void *apn, size_t apn_size, const void *user, size_t user_size, const void *pwd, size_t pwd_size)'],['../classGSM_1_1Modem.html#a4fe7ff18356824b04276b1f08597f4ca',1,'GSM::Modem::authenticate(const char *apn, const char *user=&quot;&quot;, const char *pwd=&quot;&quot;)']]]
+  ['authenticate_77',['authenticate',['../classgsm_1_1Modem.html#ad006bf4cceb17c2b3b9244a56c4d0aef',1,'gsm::Modem::authenticate(const void *apn, int apn_size, const void *user, int user_size, const void *pwd, int pwd_size)'],['../classgsm_1_1Modem.html#afb13f49136b62052d568a98a554fb46e',1,'gsm::Modem::authenticate(const char *apn, const char *user=nullptr, const char *pwd=nullptr)']]],
+  ['authenticating_78',['authenticating',['../classgsm_1_1Modem.html#ae7908e198d24fad5ad5f61596e2d0c95',1,'gsm::Modem']]]
 ];

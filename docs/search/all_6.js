@@ -1,12 +1,8 @@
 var searchData=
 [
-  ['gsm',['GSM',['../namespaceGSM.html',1,'']]],
-  ['gsm_5fbuffer_5fsize',['GSM_BUFFER_SIZE',['../Buffer_8h.html#a2296904deb3f718b18ada1f34e908eef',1,'Buffer.h']]],
-  ['gsm_5fdebug',['gsm_debug',['../debug_8cpp.html#ab0db12b12a67515a816ba23ac5418ad7',1,'debug.cpp']]],
-  ['gsm_5fdebug_5fprint',['gsm_debug_print',['../debug_8h.html#a59b0bd8a630a38e6c4332b670b2fa50e',1,'debug.cpp']]],
-  ['gsm_5ferror',['GSM_ERROR',['../debug_8h.html#a604ef8259758f5da1fcb68ac3caef868',1,'debug.h']]],
-  ['gsm_5finfo',['GSM_INFO',['../debug_8h.html#acae8832a5c4d6eedf58d21f14ea97df6',1,'debug.h']]],
-  ['gsm_5fqueue_5fsize',['GSM_QUEUE_SIZE',['../Buffer_8h.html#a8d23a9421c0506d3d173f01bd15fbaaf',1,'Buffer.h']]],
-  ['gsm_5fverbose',['GSM_VERBOSE',['../debug_8h.html#ac5a4a55b90f6e7079f8f1ba93e5e6d58',1,'debug.h']]],
-  ['gsm_5fwarn',['GSM_WARN',['../debug_8h.html#a6b4d842821c5212240faa91da0aa2009',1,'debug.h']]]
+  ['kdefaulttimeout_17',['kDefaultTimeout',['../namespacegsm.html#aa86822cd876aade4e38483c54a5cdcca',1,'gsm']]],
+  ['ksocketmax_18',['kSocketMax',['../namespacegsm.html#aac562e361edc4aafa1fb4d46bcd18ab9',1,'gsm']]],
+  ['kversionmajor_19',['kVersionMajor',['../namespacegsm.html#aa8fbb00634e5e288a9d0354361dd5345',1,'gsm']]],
+  ['kversionminor_20',['kVersionMinor',['../namespacegsm.html#a3b862b5141a79835fde94d49e7ea5050',1,'gsm']]],
+  ['kversiontrivial_21',['kVersionTrivial',['../namespacegsm.html#a9a08d8ff36f93c7ca0029d45188b7ee5',1,'gsm']]]
 ];

@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['major_5fversion',['MAJOR_VERSION',['../namespaceGSM.html#aef11e04d4158ac8491f01b92c0bcb8a6',1,'GSM']]],
-  ['minor_5fversion',['MINOR_VERSION',['../namespaceGSM.html#a056a301c19948aabb6ca5502e0e62657',1,'GSM']]]
+  ['write_117',['write',['../structgsm_1_1context__t.html#a0f5b136d1cb8c440f8dad3e6bfd8c6a4',1,'gsm::context_t']]]
 ];

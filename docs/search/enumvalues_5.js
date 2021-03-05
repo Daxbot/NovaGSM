@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['new_5fdata',['new_data',['../namespaceGSM.html#ac04b5e83f7ac20d8a1b2e523f4730162a701793633b6cb8f1dc66d056bc58f6e9',1,'GSM']]]
+  ['offline_126',['offline',['../namespacegsm.html#ace30e78eb1507925cadea8aa1619cb50a27a21354321dfbc28f0cb17b995bb9ca',1,'gsm']]],
+  ['open_127',['open',['../namespacegsm.html#ace30e78eb1507925cadea8aa1619cb50a7cef8a734855777c2a9d0caf42666e69',1,'gsm']]]
 ];

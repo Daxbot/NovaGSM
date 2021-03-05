@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['disabled',['disabled',['../namespaceGSM.html#aa0bb04b33d82d6775e86839f51bc32a6a075ae3d2fc31640504f814f60e5ef713',1,'GSM']]]
+  ['conn_5ferror_122',['conn_error',['../namespacegsm.html#a81574ba75c367b3504fcc8c7a4ef08a2aa7f20c68a694845a70288a28ec2a32f5',1,'gsm']]]
 ];
