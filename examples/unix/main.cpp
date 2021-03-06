@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
@@ -22,6 +23,7 @@ uint32_t millis()
  *
  * @param [in] data buffer to read into.
  * @param [in] size number of bytes to read.
+ * @return number of bytes read.
  */
 int read(void *data, int size)
 {
@@ -33,45 +35,11 @@ int read(void *data, int size)
  *
  * @param [in] data buffer to write.
  * @param [in] size number of bytes to write.
+ * @return number of bytes written.
  */
 int write(const void *data, int size)
 {
     return ::write(fd, data, size);
-}
-
-/**
- * @brief State change callback.
- *
- * @param [in] state new state of the modem.
- * @param [in] user private data.
- */
-void device_callback(gsm::State state, void *user)
-{
-    gsm::Modem *modem = static_cast<gsm::Modem*>(user);
-    switch(state) {
-        case gsm::State::offline:
-            /**
-             * If the modem is in minimum functionality mode call reset().
-             */
-            modem->reset();
-            break;
-        case gsm::State::registered:
-            /**
-             * Once we are connected to the network call authenticate() to
-             * activate the data connection.
-             */
-            modem->authenticate("hologram");
-            break;
-        case gsm::State::ready:
-            /**
-             * Once the GPRS initalization is done we can establish a TCP
-             * connection.
-             */
-            modem->connect("cloudsocket.hologram.io", 9999);
-            break;
-        default:
-            break;
-    }
 }
 
 /** Application entry point. */
@@ -84,18 +52,65 @@ int main()
         exit(1);
     }
 
+    // Initialize the driver
     gsm::context_t ctx = {
         .read = read,
         .write = write,
         .elapsed_ms = millis,
     };
 
-    // Initialize the driver
     gsm::Modem modem(&ctx);
 
-    modem.set_state_callback(device_callback, &modem);
+    // Wait for registration
+    while(!modem.registered())
+        modem.process();
 
-    while(1) {
+    // Activate data connection
+    while(!modem.ready()) {
+        if(!modem.authenticating())
+            modem.authenticate("hologram", nullptr, nullptr, 10000);
+
+        modem.process();
+    }
+
+    // Establish TCP connection
+    while(!modem.connected()) {
+        if(!modem.handshaking())
+            modem.connect("www.httpbin.org", 80, 10000);
+
+        modem.process();
+    }
+
+    // Send GET request
+    char tx_buffer[64];
+    int tx_count = snprintf(tx_buffer, sizeof(tx_buffer),
+        "GET /ip HTTP/1.1\r\nHost: www.httpbin.org\r\n\r\n");
+
+    modem.send(tx_buffer, tx_count);
+
+    // Print response
+    char rx_buffer[512];
+    while(modem.connected()) {
+        if(!modem.rx_busy()) {
+            if(modem.rx_available()) {
+                // Begin asynchronous receive
+                int rx_count = std::min(
+                    static_cast<size_t>(modem.rx_available()), sizeof(rx_buffer));
+
+                modem.receive(rx_buffer, rx_count);
+            }
+            else if(modem.rx_count()) {
+                // Receive completed - write data to stdout.
+                fwrite(rx_buffer, modem.rx_count(), 1, stdout);
+                fputc('\n', stdout);
+                fflush(stdout);
+
+                // Reset buffer
+                modem.stop_receive();
+                break;
+            }
+        }
+
         modem.process();
     }
 
@@ -123,6 +138,7 @@ void gsm_debug(int level, const char *file, int line, const char *str)
         }
     }
 
-    printf("%s:%04d: |%d| %s", basename, line, level, str);
+    fprintf(stdout, "%s:%04d: |%d| %s", basename, line, level, str);
+    fflush(stdout);
 }
 

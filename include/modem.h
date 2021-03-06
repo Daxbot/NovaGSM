@@ -170,11 +170,13 @@ namespace gsm
              * @param [in] user_size length of 'user'.
              * @param [in] pwd password.
              * @param [in] pwd_size length of 'pwd'.
+             * @param [in] timeout authentication timeout (ms).
              */
             int authenticate(
                 const void *apn, int apn_size,
                 const void *user, int user_size,
-                const void *pwd, int pwd_size);
+                const void *pwd, int pwd_size,
+                int timeout = 60000);
 
             /**
              * @brief Configure the Access Point Name (APN).
@@ -182,11 +184,13 @@ namespace gsm
              * @param [in] apn access point name.
              * @param [in] user user name.
              * @param [in] pwd password.
+             * @param [in] timeout authentication timeout (ms).
              */
             int authenticate(
                 const char *apn,
                 const char *user=nullptr,
-                const char *pwd=nullptr);
+                const char *pwd=nullptr,
+                int timeout = 60000);
 
             /** Re-initialize the driver state. */
             void reinit();
@@ -205,6 +209,7 @@ namespace gsm
              * @param [in] host server ip address.
              * @param [in] host_size length of 'host'.
              * @param [in] port server port number.
+             * @param [in] timeout connection timeout.
              * @return -EINVAL if inputs are null.
              * @return -ENODEV if the device is not responsive.
              * @return -ENETUNREACH if the network is not available.
@@ -212,7 +217,8 @@ namespace gsm
              * @return -EALREADY if handshaking is already in progress.
              * @return -EADDRINUSE if a socket is already open.
              */
-            int connect(const void *host, int host_size, int port);
+            int connect(
+                const void *host, int host_size, int port, int timeout=75000);
 
             /**
              * @brief Open a TCP socket.
@@ -221,6 +227,7 @@ namespace gsm
              *
              * @param [in] host server ip address.
              * @param [in] port server port number.
+             * @param [in] timeout connection timeout.
              * @return -EINVAL if inputs are null.
              * @return -ENODEV if the device is not responsive.
              * @return -ENETUNREACH if the network is not available.
@@ -228,7 +235,7 @@ namespace gsm
              * @return -EALREADY if handshaking is already in progress.
              * @return -EADDRINUSE if a socket is already open.
              */
-            int connect(const char *host, int port);
+            int connect(const char *host, int port, int timeout=75000);
 
             /**
              * @brief Close TCP socket.
@@ -314,20 +321,20 @@ namespace gsm
 
             /**
              * @brief Poll the status of the last receive() call
-             * @return number of bytes received, or -1 on error
+             * @return number of bytes received.
              */
             inline int rx_count()
             {
-                return (rx_buffer_) ? rx_count_ : -1;
+                return (rx_buffer_) ? rx_count_ : 0;
             }
 
             /**
              * @brief Poll the status of the last send() call
-             * @return number of bytes sent, or -1 on error
+             * @return number of bytes sent.
              */
             inline int tx_count()
             {
-                return (tx_buffer_) ? tx_count_ : -1;
+                return (tx_buffer_) ? tx_count_ : 0;
             }
 
             /** Returns the device state. */
@@ -352,6 +359,12 @@ namespace gsm
             inline bool authenticating()
             {
                 return device_state_ == State::authenticating;
+            }
+
+            /** Returns true if the modem is ready for connect(). */
+            inline bool ready()
+            {
+                return device_state_ == State::ready;
             }
 
             /** Returns true if a connection attempt is in progress. */

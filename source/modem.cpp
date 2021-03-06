@@ -43,7 +43,7 @@
  */
 
 /** How often to poll the modem. */
-static constexpr int kPollingInterval = 1000;
+static constexpr int kPollingInterval = 20;
 
 /**
  * @brief Buffer string search.
@@ -179,8 +179,10 @@ namespace gsm
             cmd_buffer_.pop_front();
         }
 
-        sock_state_ = SocketState::idle;
         signal_ = 99;
+        memset(ip_address_, '\0', sizeof(ip_address_));
+
+        sock_state_ = SocketState::idle;
         rx_buffer_ = nullptr;
         tx_buffer_ = nullptr;
         rx_available_ = 0;
@@ -243,14 +245,15 @@ namespace gsm
         const void *user,
         int user_size,
         const void *pwd,
-        int pwd_size)
+        int pwd_size,
+        int timeout)
     {
         // AT+CIPSHUT - reset GPRS context
         // AT+CIPMUX=0 - set single IP mode
         // AT+CIPRXGET=1 - set manual data receive
         // AT+CIPQSEND=1 - set quick send
         // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
-        Command *cmd = new Command(65000,
+        Command *cmd = new Command(timeout,
             "AT+CIPSHUT;+CIPMUX=0;+CIPRXGET=1;+CIPQSEND=1;"
             "+CSTT=\"%.*s\",\"%.*s\",\"%.*s\"\r\n",
             apn_size, static_cast<const char *>(apn),
@@ -265,7 +268,7 @@ namespace gsm
 
         // AT+CIICR - activate data connection
         // AT+CIFSR - get local IP address
-        cmd = new Command(60000, "AT+CIICR;+CIFSR\r\n");
+        cmd = new Command(timeout, "AT+CIICR;+CIFSR\r\n");
 
         result = push_command(cmd);
         if(result) {
@@ -278,15 +281,17 @@ namespace gsm
         return 0;
     }
 
-    int Modem::authenticate(const char *apn, const char *user, const char *pwd)
+    int Modem::authenticate(
+        const char *apn, const char *user, const char *pwd, int timeout)
     {
         return authenticate(
             apn, (apn) ? strlen(apn) : 0,
             user, (user) ? strlen(user) : 0,
-            pwd, (pwd) ? strlen(pwd) : 0);
+            pwd, (pwd) ? strlen(pwd) : 0,
+            timeout);
     }
 
-    int Modem::connect(const void *host, int host_size, int port)
+    int Modem::connect(const void *host, int host_size, int port, int timeout)
     {
         if(host == nullptr)
             return -EINVAL;
@@ -313,7 +318,7 @@ namespace gsm
         }
 
         // AT+CIPSTART=[mode],[host],[port] - start a new connection
-        Command *cmd = new Command(75000,
+        Command *cmd = new Command(timeout,
             "AT+CIPSTART=\"TCP\",\"%.*s\",%d\r\n",
             host_size, static_cast<const char*>(host), port);
 
@@ -328,9 +333,9 @@ namespace gsm
         return 0;
     }
 
-    int Modem::connect(const char *host, int port)
+    int Modem::connect(const char *host, int port, int timeout)
     {
-        return connect(host, (host) ? strlen(host) : 0, port);
+        return connect(host, (host) ? strlen(host) : 0, port, timeout);
     }
 
     int Modem::disconnect()
@@ -471,6 +476,8 @@ namespace gsm
                 // AT+CIPSEND? - query available size of tx buffer
                 cmd = new Command(1000,
                     "AT+CSQ;+CIPSTATUS;+CIPRXGET=4;+CIPSEND?\r\n");
+
+                sock_state_ = SocketState::idle;
                 break;
             default:
                 return 0;
@@ -581,8 +588,6 @@ namespace gsm
 
             int length = (end - start) + 1;
             if(length > 4) {
-                LOG_VERBOSE("%.*s\n", length, start);
-
                 if(memstr(start, "+CSQ:", length)) {
                     void *data = memchr(start, ':', length);
 
@@ -686,10 +691,11 @@ namespace gsm
                 unsigned int a,b,c,d;
                 char *data = reinterpret_cast<char *>(start);
                 if(sscanf(data, "%3u.%3u.%3u.%3u", &a, &b, &c, &d) == 4) {
+                    // Store IP address
                     snprintf(ip_address_, sizeof(ip_address_),
                         "%u.%u.%u.%u", a, b, c, d);
 
-                    LOG_INFO("Connected to GPRS (%s)\n", ip_address_);
+                    LOG_INFO("Connected to GPRS\n");
                     set_state(State::ready);
                     free_pending();
                 }
@@ -702,6 +708,10 @@ namespace gsm
 
     void Modem::process_handshaking()
     {
+        // Wait for 'OK'
+        if(!memstr(response_, "\r\nOK\r\n", response_size_))
+            return;
+
         // Parse lines
         uint8_t *start = response_;
         int size = response_size_;
@@ -716,17 +726,21 @@ namespace gsm
                 // Expected responses to AT+CIPSTART=...
                 if(memstr(start, "CONNECT OK", length)) {
                     LOG_INFO("TCP socket connected\n");
+                    sock_state_ = SocketState::idle;
                     set_state(State::open);
                     free_pending();
+                    break;
                 }
                 else if(memstr(start, "ALREADY CONNECT", length)) {
                     set_state(State::open);
                     free_pending();
+                    break;
                 }
                 else if(memstr(start, "CONNECT FAIL", length)) {
                     LOG_WARN("TCP connection failed\n");
                     set_state(State::ready);
                     free_pending();
+                    break;
                 }
             }
 
@@ -741,33 +755,33 @@ namespace gsm
             case SocketState::idle:
                 // Idle
                 socket_state_idle();
-                return;
+                break;
             case SocketState::rtr:
                 // Ready to receive
                 socket_state_rtr();
-                return;
+                break;
             case SocketState::rts:
                 // Request to send
                 socket_state_rts();
-                return;
+                break;
             case SocketState::cts:
                 // Clear to send
                 socket_state_cts();
-                return;
+                break;
         }
     }
 
     void Modem::socket_state_idle()
     {
         // Wait for 'OK'
-        if(memstr(response_, "\r\nOK\r\n", response_size_) == nullptr)
+        if(!memstr(response_, "\r\nOK\r\n", response_size_))
             return;
 
         // Parse lines
         uint8_t *start = response_;
         int size = response_size_;
 
-        while(1) {
+        while(size > 4) {
             uint8_t *end = static_cast<uint8_t*>(memchr(start, '\n', size));
             if(end == nullptr)
                 break;
@@ -781,7 +795,7 @@ namespace gsm
                     stop_receive();
 
                     set_state(State::offline);
-                    return;
+                    break;
                 }
                 else if(memstr(start, "CLOSE OK", length)
                     || memstr(start, "TCP CLOSED", length)) {
@@ -791,7 +805,7 @@ namespace gsm
                     stop_receive();
 
                     set_state(State::registered);
-                    return;
+                    break;
                 }
                 else if(memstr(start, "+CIPRXGET: 4", length)) {
                     void *data = memchr(start, ',', length);
@@ -811,7 +825,7 @@ namespace gsm
 
                     const int requested = (rx_size_ - rx_count_);
                     const int available = std::min(rx_available_, kSocketMax);
-                    if(requested > 0 || available > 0)
+                    if(rx_buffer_ && (requested > 0 || available > 0))
                         socket_receive(std::min(requested, available));
                 }
                 else if(memstr(start, "+CIPSEND:", length)) {
@@ -827,7 +841,7 @@ namespace gsm
 
                     const int requested = (tx_size_ - tx_count_);
                     const int available = std::min(tx_available_, kSocketMax);
-                    if(requested > 0 || available > 0)
+                    if(tx_buffer_ && (requested > 0 || available > 0))
                         socket_send(std::min(requested, available));
                 }
                 else if(memstr(start, "+CSQ:", length)) {
@@ -862,8 +876,9 @@ namespace gsm
             return;
         }
 
-        if(memstr(response_, "\r\nOK\r\n", response_size_) == nullptr)
+        if(!memstr(response_, "\r\nOK\r\n", response_size_)) {
             return;
+        }
 
         uint8_t *start = static_cast<uint8_t*>(
             memstr(response_, "+CIPRXGET: 2", response_size_));
@@ -881,6 +896,10 @@ namespace gsm
             const int count = strtol(
                 reinterpret_cast<char*>(data)+1, nullptr, 10);
 
+            // Guard against partial read
+            if(size < (count + 6))
+                return;
+
             data = memchr(start, '\n', size);
 
             // +CIPRXGET: 2,%d,%d,%s\r\n%s\r\nOK\r\n
@@ -888,22 +907,21 @@ namespace gsm
             // │                       └ data
             // └ start
 
+            LOG_INFO("Received %d bytes (%d)\n",
+                    count, rx_size_ - rx_count_ - count);
+
+            rx_available_ -= count;
             if(rx_buffer_) {
                 memcpy(rx_buffer_ + rx_count_, data, count);
 
-                LOG_INFO("Received %d bytes (%d)\n",
-                    count, rx_size_ - rx_count_ - count);
-
                 rx_count_ += count;
-                rx_available_ -= count;
                 if(rx_count_ == rx_size_ && event_cb_)
                     event_cb_(Event::rx_complete, event_cb_user_);
             }
 
             sock_state_ = SocketState::idle;
+            free_pending();
         }
-
-        free_pending();
     }
 
     void Modem::socket_state_rts()
@@ -979,6 +997,7 @@ namespace gsm
 
         if(start) {
             const int size = response_size_ - (start - response_);
+
             if(memchr(start, '\n', size)) {
                 void *data = memchr(start, ':', size);
 
