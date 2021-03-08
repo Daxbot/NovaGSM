@@ -137,7 +137,9 @@ namespace gsm
         reinit();
 
         // AT+CFUN=0 - minimum functionality mode
-        Command *cmd = new Command(10000, "AT+CFUN=0\r\n");
+        Command *cmd = new (std::nothrow) Command(10000, "AT+CFUN=0\r\n");
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = push_command(cmd);
         if(result) {
@@ -154,7 +156,9 @@ namespace gsm
         reinit();
 
         // AT+CFUN=1,1 - reset phone module
-        Command *cmd = new Command(10000, "AT+CFUN=1,1;\r\n");
+        Command *cmd = new (std::nothrow) Command(10000, "AT+CFUN=1,1;\r\n");
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = push_command(cmd);
         if(result) {
@@ -172,8 +176,11 @@ namespace gsm
             return -EINVAL;
 
         // AT+CPIN=[pin] - enter pin
-        Command *cmd = new Command(kDefaultTimeout,
+        Command *cmd = new (std::nothrow) Command(kDefaultTimeout,
             "AT+CPIN=\"%.*s\"\r\n", pin_size, static_cast<const char*>(pin));
+
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = push_command(cmd);
         if(result)
@@ -196,12 +203,15 @@ namespace gsm
         // AT+CIPRXGET=1 - set manual data receive
         // AT+CIPQSEND=1 - set quick send
         // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
-        Command *cmd = new Command(timeout,
+        Command *cmd = new (std::nothrow) Command(timeout,
             "AT+CIPSHUT;+CIPMUX=0;+CIPRXGET=1;+CIPQSEND=1;"
             "+CSTT=\"%.*s\",\"%.*s\",\"%.*s\"\r\n",
             apn_size, static_cast<const char *>(apn),
             user_size, static_cast<const char *>(user),
             pwd_size, static_cast<const char *>(pwd));
+
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = push_command(cmd);
         if(result) {
@@ -211,7 +221,9 @@ namespace gsm
 
         // AT+CIICR - activate data connection
         // AT+CIFSR - get local IP address
-        cmd = new Command(timeout, "AT+CIICR;+CIFSR\r\n");
+        cmd = new (std::nothrow) Command(timeout, "AT+CIICR;+CIFSR\r\n");
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         result = push_command(cmd);
         if(result) {
@@ -261,9 +273,12 @@ namespace gsm
         }
 
         // AT+CIPSTART=[mode],[host],[port] - start a new connection
-        Command *cmd = new Command(timeout,
+        Command *cmd = new (std::nothrow) Command(timeout,
             "AT+CIPSTART=\"TCP\",\"%.*s\",%d\r\n",
             host_size, static_cast<const char*>(host), port);
+
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = push_command(cmd);
         if(result) {
@@ -303,7 +318,9 @@ namespace gsm
         }
 
         // AT+CIPCLOSE - close connection
-        Command *cmd = new Command(kDefaultTimeout, "AT+CIPCLOSE\r\n");
+        Command *cmd = new (std::nothrow) Command(kDefaultTimeout, "AT+CIPCLOSE\r\n");
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = push_command(cmd);
         if(result)
@@ -372,9 +389,7 @@ namespace gsm
 
     int Modem::push_command(Command *cmd)
     {
-        if(cmd == nullptr)
-            return -EINVAL;
-
+        assert(cmd);
         if(cmd->size() >= kBufferSize)
             return -EMSGSIZE;
 
@@ -384,9 +399,7 @@ namespace gsm
 
     int Modem::shift_command(Command *cmd)
     {
-        if(cmd == nullptr)
-            return -EINVAL;
-
+        assert(cmd);
         if(cmd->size() >= kBufferSize)
             return -EMSGSIZE;
 
@@ -403,21 +416,21 @@ namespace gsm
             case State::locked:
                 // AT+CFUN? - power status
                 // AT+CPIN? - SIM status
-                cmd = new Command(5000, "AT+CFUN?;+CPIN?\r\n");
+                cmd = new (std::nothrow) Command(5000, "AT+CFUN?;+CPIN?\r\n");
                 break;
             case State::searching:
             case State::registered:
             case State::ready:
                 // AT+CSQ - signal quality report
                 // AT+CREG? - registration status
-                cmd = new Command(1000, "AT+CSQ;+CREG?\r\n");
+                cmd = new (std::nothrow) Command(1000, "AT+CSQ;+CREG?\r\n");
                 break;
             case State::open:
                 // AT+CSQ - signal quality report
                 // AT+CIPSTATUS - TCP connection status
                 // AT+CIPRXGET=4 - query socket unread bytes
                 // AT+CIPSEND? - query available size of tx buffer
-                cmd = new Command(1000,
+                cmd = new (std::nothrow) Command(1000,
                     "AT+CSQ;+CIPSTATUS;+CIPRXGET=4;+CIPSEND?\r\n");
 
                 sock_state_ = SocketState::idle;
@@ -425,6 +438,9 @@ namespace gsm
             default:
                 return 0;
         }
+
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = push_command(cmd);
         if(result)
@@ -442,8 +458,11 @@ namespace gsm
             return -EBUSY;
 
         // AT+CIPRXGET=2,[size] - read 'size' bytes from the socket
-        Command *cmd = new Command(kDefaultTimeout,
+        Command *cmd = new (std::nothrow) Command(kDefaultTimeout,
             "AT+CIPRXGET=2,%d\r\n", count);
+
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = shift_command(cmd);
         if(result) {
@@ -465,8 +484,11 @@ namespace gsm
             return -EBUSY;
 
         // AT+CIPSEND=[size] - indicate that data is about to be sent
-        Command *cmd = new Command(kDefaultTimeout,
+        Command *cmd = new (std::nothrow) Command(kDefaultTimeout,
             "AT+CIPSEND=%d\r\n", count);
+
+        if(cmd == nullptr)
+            return -ENOMEM;
 
         int result = shift_command(cmd);
         if(result) {

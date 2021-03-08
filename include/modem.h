@@ -209,6 +209,7 @@ namespace gsm
              * @param [in] pin SIM card pin
              * @param [in] pin_size length of 'pin'
              * @return -EINVAL if inputs are null.
+             * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int unlock(const void *pin, int pin_size);
@@ -222,6 +223,7 @@ namespace gsm
              * @param [in] pwd password.
              * @param [in] pwd_size length of 'pwd'.
              * @param [in] timeout authentication timeout (ms).
+             * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int authenticate(
@@ -237,6 +239,7 @@ namespace gsm
              * @param [in] user user name.
              * @param [in] pwd password.
              * @param [in] timeout authentication timeout (ms).
+             * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int authenticate(
@@ -250,12 +253,14 @@ namespace gsm
 
             /**
              * @brief Reset the modem (+CFUN=1,1).
+             * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int reset();
 
             /**
              * @brief Enter low power mode (+CFUN=0).
+             * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int disable();
@@ -275,6 +280,7 @@ namespace gsm
              * @return -ENOTCONN if GPRS is not connected.
              * @return -EALREADY if handshaking is already in progress.
              * @return -EADDRINUSE if a socket is already open.
+             * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int connect(
@@ -294,6 +300,7 @@ namespace gsm
              * @return -ENOTCONN if GPRS is not connected.
              * @return -EALREADY if handshaking is already in progress.
              * @return -EADDRINUSE if a socket is already open.
+             * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int connect(const char *host, int port, int timeout=75000);
@@ -304,6 +311,7 @@ namespace gsm
              * @return -ENODEV if the device is not responsive.
              * @return -ENETUNREACH if the network is not available.
              * @return -ENOTSOCK if a connection is not established.
+             * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int disconnect();
@@ -473,22 +481,38 @@ namespace gsm
             /**
              * @brief Add a command to the end of the queue.
              * @param [in] cmd Command object.
+             * @return -EMSGSIZE if buffer size exceeded.
              */
             int push_command(Command *cmd);
 
             /**
              * @brief Add a command to the front of the queue.
              * @param [in] cmd Command object.
+             * @return -EMSGSIZE if buffer size exceeded.
              */
             int shift_command(Command *cmd);
 
-            /** Send a polling message based on the modem's state. */
+            /**
+             * @brief Send a polling message based on the modem's state.
+             * @return -ENOMEM if memory allocation failed.
+             * @return -EMSGSIZE if buffer size exceeded.
+             */
             int poll_modem();
 
-            /** Read data from the socket. */
+            /**
+             * @brief Read data from the socket.
+             * @return -EBUSY if socket is not idle.
+             * @return -ENOMEM if memory allocation failed.
+             * @return -EMSGSIZE if buffer size exceeded.
+             */
             int socket_receive(int count);
 
-            /** Write data to the socket. */
+            /**
+             * @brief Write data to the socket.
+             * @return -EBUSY if socket is not idle.
+             * @return -ENOMEM if memory allocation failed.
+             * @return -EMSGSIZE if buffer size exceeded.
+             */
             int socket_send(int count);
 
             /** Handle a command timeout. */
