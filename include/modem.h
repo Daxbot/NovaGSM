@@ -381,20 +381,20 @@ namespace gsm
 
             /**
              * @brief Poll the status of the last receive() call
-             * @return number of bytes received.
+             * @return number of bytes received or -1 if not receiving.
              */
             inline int rx_count()
             {
-                return (rx_buffer_) ? rx_count_ : 0;
+                return (rx_buffer_) ? rx_count_ : -1;
             }
 
             /**
              * @brief Poll the status of the last send() call
-             * @return number of bytes sent.
+             * @return number of bytes sent or -1 if not sending.
              */
             inline int tx_count()
             {
-                return (tx_buffer_) ? tx_count_ : 0;
+                return (tx_buffer_) ? tx_count_ : -1;
             }
 
             /** Return the device state. */

@@ -111,14 +111,15 @@ int main()
     char rx_buffer[512];
     while(modem.connected()) {
         if(!modem.rx_busy()) {
-            if(modem.rx_available()) {
+            int count = modem.rx_count();
+            if(count < 0) {
                 // Begin asynchronous receive
                 int rx_count = std::min(
                     static_cast<size_t>(modem.rx_available()), sizeof(rx_buffer));
 
                 modem.receive(rx_buffer, rx_count);
             }
-            else if(modem.rx_count()) {
+            else {
                 // Receive completed - write data to stdout.
                 fwrite(rx_buffer, modem.rx_count(), 1, stdout);
                 fputc('\n', stdout);
