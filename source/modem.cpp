@@ -767,7 +767,7 @@ namespace gsm
                     stop_send();
                     stop_receive();
 
-                    set_state(State::registered);
+                    set_state(State::ready);
                     break;
                 }
                 else if(memstr(start, "+CIPRXGET: 4", length)) {
