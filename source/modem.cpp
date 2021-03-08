@@ -195,15 +195,14 @@ namespace gsm
         const void *user,
         int user_size,
         const void *pwd,
-        int pwd_size,
-        int timeout)
+        int pwd_size)
     {
         // AT+CIPSHUT - reset GPRS context
         // AT+CIPMUX=0 - set single IP mode
         // AT+CIPRXGET=1 - set manual data receive
         // AT+CIPQSEND=1 - set quick send
         // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
-        Command *cmd = new (std::nothrow) Command(timeout,
+        Command *cmd = new (std::nothrow) Command(65000,
             "AT+CIPSHUT;+CIPMUX=0;+CIPRXGET=1;+CIPQSEND=1;"
             "+CSTT=\"%.*s\",\"%.*s\",\"%.*s\"\r\n",
             apn_size, static_cast<const char *>(apn),
@@ -221,7 +220,7 @@ namespace gsm
 
         // AT+CIICR - activate data connection
         // AT+CIFSR - get local IP address
-        cmd = new (std::nothrow) Command(timeout, "AT+CIICR;+CIFSR\r\n");
+        cmd = new (std::nothrow) Command(85000, "AT+CIICR;+CIFSR\r\n");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -237,16 +236,15 @@ namespace gsm
     }
 
     int Modem::authenticate(
-        const char *apn, const char *user, const char *pwd, int timeout)
+        const char *apn, const char *user, const char *pwd)
     {
         return authenticate(
             apn, (apn) ? strlen(apn) : 0,
             user, (user) ? strlen(user) : 0,
-            pwd, (pwd) ? strlen(pwd) : 0,
-            timeout);
+            pwd, (pwd) ? strlen(pwd) : 0);
     }
 
-    int Modem::connect(const void *host, int host_size, int port, int timeout)
+    int Modem::connect(const void *host, int host_size, int port)
     {
         if(host == nullptr)
             return -EINVAL;
@@ -273,7 +271,7 @@ namespace gsm
         }
 
         // AT+CIPSTART=[mode],[host],[port] - start a new connection
-        Command *cmd = new (std::nothrow) Command(timeout,
+        Command *cmd = new (std::nothrow) Command(75000,
             "AT+CIPSTART=\"TCP\",\"%.*s\",%d\r\n",
             host_size, static_cast<const char*>(host), port);
 
@@ -291,9 +289,9 @@ namespace gsm
         return 0;
     }
 
-    int Modem::connect(const char *host, int port, int timeout)
+    int Modem::connect(const char *host, int port)
     {
-        return connect(host, (host) ? strlen(host) : 0, port, timeout);
+        return connect(host, (host) ? strlen(host) : 0, port);
     }
 
     int Modem::disconnect()

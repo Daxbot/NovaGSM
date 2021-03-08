@@ -71,7 +71,7 @@ int main()
     // Activate data connection
     while(!modem.ready()) {
         if(!modem.authenticating())
-            modem.authenticate("hologram", nullptr, nullptr, 10000);
+            modem.authenticate("hologram");
 
         struct timespec now;
         clock_gettime(CLOCK_REALTIME, &now);
@@ -87,7 +87,7 @@ int main()
     // Establish TCP connection
     while(!modem.connected()) {
         if(!modem.handshaking())
-            modem.connect("www.httpbin.org", 80, 10000);
+            modem.connect("www.httpbin.org", 80);
 
         struct timespec now;
         clock_gettime(CLOCK_REALTIME, &now);

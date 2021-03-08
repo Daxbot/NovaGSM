@@ -222,15 +222,13 @@ namespace gsm
              * @param [in] user_size length of 'user'.
              * @param [in] pwd password.
              * @param [in] pwd_size length of 'pwd'.
-             * @param [in] timeout authentication timeout (ms).
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int authenticate(
                 const void *apn, int apn_size,
                 const void *user, int user_size,
-                const void *pwd, int pwd_size,
-                int timeout = 60000);
+                const void *pwd, int pwd_size);
 
             /**
              * @brief Configure the Access Point Name (APN).
@@ -238,15 +236,13 @@ namespace gsm
              * @param [in] apn access point name.
              * @param [in] user user name.
              * @param [in] pwd password.
-             * @param [in] timeout authentication timeout (ms).
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int authenticate(
                 const char *apn,
                 const char *user=nullptr,
-                const char *pwd=nullptr,
-                int timeout = 60000);
+                const char *pwd=nullptr);
 
             /** Re-initialize the driver state. */
             void reinit();
@@ -273,7 +269,6 @@ namespace gsm
              * @param [in] host server ip address.
              * @param [in] host_size length of 'host'.
              * @param [in] port server port number.
-             * @param [in] timeout connection timeout.
              * @return -EINVAL if inputs are null.
              * @return -ENODEV if the device is not responsive.
              * @return -ENETUNREACH if the network is not available.
@@ -284,7 +279,7 @@ namespace gsm
              * @return -EMSGSIZE if buffer size exceeded.
              */
             int connect(
-                const void *host, int host_size, int port, int timeout=75000);
+                const void *host, int host_size, int port);
 
             /**
              * @brief Open a TCP socket.
@@ -293,7 +288,6 @@ namespace gsm
              *
              * @param [in] host server ip address.
              * @param [in] port server port number.
-             * @param [in] timeout connection timeout.
              * @return -EINVAL if inputs are null.
              * @return -ENODEV if the device is not responsive.
              * @return -ENETUNREACH if the network is not available.
@@ -303,7 +297,7 @@ namespace gsm
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
-            int connect(const char *host, int port, int timeout=75000);
+            int connect(const char *host, int port);
 
             /**
              * @brief Close TCP socket.
