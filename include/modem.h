@@ -26,12 +26,19 @@
 namespace gsm
 {
     /**
+     * @brief Maximum size of an AT command and response.
+     *
+     * This can be set with -DNOVAGSM_BUFFER_SIZE (default 556).
+     */
+    constexpr int kBufferSize = (NOVAGSM_BUFFER_SIZE);
+
+    /**
      * @brief Maximum size of socket data transfers.
      *
      * Each data chunk must be less than the actual buffer size to account for
      * protocol overhead.
      */
-    constexpr int kSocketMax = (NOVAGSM_BUFFER_SIZE - 64);
+    constexpr int kSocketMax = (kBufferSize - 64);
 
     /** How long to wait for a command response. */
     constexpr int kDefaultTimeout = 200;
@@ -554,7 +561,7 @@ namespace gsm
             SocketState sock_state_ = SocketState::idle;
 
             /** Modem response buffer. */
-            uint8_t response_[NOVAGSM_BUFFER_SIZE] = {};
+            uint8_t response_[kBufferSize] = {};
 
             /** Size of modem's response. */
             int response_size_ = 0;
@@ -612,9 +619,9 @@ namespace gsm
             }
 
         private:
-            int size_ = 0;                      /**< Size of payload. */
-            int timeout_ = 0;                   /**< Response timeout (ms). */
-            uint8_t data_[NOVAGSM_BUFFER_SIZE]; /**< Payload buffer. */
+            int size_ = 0;                  /**< Size of payload. */
+            int timeout_ = 0;               /**< Response timeout (ms). */
+            uint8_t data_[kBufferSize];     /**< Payload buffer. */
     };
 }
 

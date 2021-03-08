@@ -61,9 +61,7 @@ namespace gsm
             response_size_ = ctx_->rx_count_async();
             #else
             uint8_t *p_data = &response_[response_size_];
-            int count = ctx_->read(
-                p_data, (NOVAGSM_BUFFER_SIZE - response_size_));
-
+            int count = ctx_->read(p_data, (kBufferSize - response_size_));
             if(count > 0)
                 response_size_ += count;
             #endif
@@ -91,7 +89,7 @@ namespace gsm
             // Send queued command
             #if defined(NOVAGSM_ASYNC)
                 ctx_->rx_abort_async();
-                ctx_->receive_async(response_, NOVAGSM_BUFFER_SIZE);
+                ctx_->receive_async(response_, kBufferSize);
                 ctx_->send_async(front->data, front->size);
             #else
                 ctx_->write(pending_->data(), pending_->size());
@@ -377,7 +375,7 @@ namespace gsm
         if(cmd == nullptr)
             return -EINVAL;
 
-        if(cmd->size() >= NOVAGSM_BUFFER_SIZE)
+        if(cmd->size() >= kBufferSize)
             return -EMSGSIZE;
 
         cmd_buffer_.push_back(cmd);
@@ -389,7 +387,7 @@ namespace gsm
         if(cmd == nullptr)
             return -EINVAL;
 
-        if(cmd->size() >= NOVAGSM_BUFFER_SIZE)
+        if(cmd->size() >= kBufferSize)
             return -EMSGSIZE;
 
         cmd_buffer_.push_front(cmd);
@@ -918,15 +916,13 @@ namespace gsm
                  * expecting data. Send zeroes until the buffer is
                  * full.
                  */
-                uint8_t *buffer = static_cast<uint8_t*>(
-                    malloc(NOVAGSM_BUFFER_SIZE));
-
-                memset(buffer, '\0', NOVAGSM_BUFFER_SIZE);
+                uint8_t *buffer = static_cast<uint8_t*>(malloc(kBufferSize));
+                memset(buffer, '\0', kBufferSize);
 
                 #if defined(GSM_ASYNC)
-                ctx_->send_async(buffer, NOVAGSM_BUFFER_SIZE);
+                ctx_->send_async(buffer, kBufferSize);
                 #else
-                ctx_->write(buffer, NOVAGSM_BUFFER_SIZE);
+                ctx_->write(buffer, kBufferSize);
                 #endif
             }
 
@@ -975,7 +971,7 @@ namespace gsm
         char *data = reinterpret_cast<char*>(data_);
 
         va_start(argp, command);
-        size_ = vsnprintf(data, NOVAGSM_BUFFER_SIZE, command, argp);
+        size_ = vsnprintf(data, kBufferSize, command, argp);
         va_end(argp);
     }
 }
