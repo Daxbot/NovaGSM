@@ -28,8 +28,8 @@ namespace gsm
     /**
      * @brief Maximum size of socket data transfers.
      *
-     * Each data chunk must be less than the actual
-     * buffer size to account for protocol overhead.
+     * Each data chunk must be less than the actual buffer size to account for
+     * protocol overhead.
      */
     constexpr int kSocketMax = (NOVAGSM_BUFFER_SIZE - 64);
 
@@ -41,7 +41,7 @@ namespace gsm
      *
      * The user has two API options: common and asynchronous.
      *
-     * The common API expects a non-blocking buffered
+     * The common API expects a *non-blocking* buffered
      * implementation, e.g. unistd or Arduino.
      *
      *   https://linux.die.net/man/2/read
@@ -56,35 +56,68 @@ namespace gsm
      * To use the common API provide callbacks for:
      *  1. read
      *  2. write
-     *  3. elapsed_ms
      *
      * To use the asynchronous API define GSM_ASYNC and provide callbacks for:
      *  1. receive_async
      *  2. send_async
      *  3. rx_count_async
      *  4. rx_abort_async
-     *  5. elapsed_ms
      */
     typedef struct {
         #if defined(NOVAGSM_ASYNC)
-            // Asynchronous API
-            int (*receive_async)(void *data, int size);         /**< Asynchronously receive 'size' bytes into 'data' from device. */
-            int (*send_async)(const void *data, int size);      /**< Asynchronously send 'size' bytes from 'data' to device. */
-            int (*rx_count_async)();                            /**< Return the number of bytes received during receive_async. */
-            void (*rx_abort_async)();                           /**< Abort the ongoing asynchronous receive operation. */
-        #else
-            // Common API
-            int (*read)(void *data, int size);                  /**< Read 'size' bytes into 'data' from stream. */
-            int (*write)(const void *data, int size);           /**< Write 'size' bytes from 'data' to stream. */
-        #endif
+            /**
+             * @brief Asynchronous receive.
+             *
+             * Receive 'size' bytes into 'data' from device.
+             *
+             * @param [out] data buffer to receive into.
+             * @param [in] size number of bytes to receive.
+             */
+            int (*receive_async)(void *data, int size);
 
-        // Both
-        uint32_t (*elapsed_ms)();                               /**< Return the milliseconds elapsed since initialization. */
+            /**
+             * @brief Asynchronous send.
+             *
+             * Asynchronously send 'size' bytes from 'data' to device.
+             *
+             * @param [in] data buffer to send.
+             * @param [in] size number of bytes to send.
+             */
+            int (*send_async)(const void *data, int size);
+
+            /** Return the number of bytes received during receive_async(). */
+            int (*rx_count_async)();
+
+            /** Abort an ongoing asynchronous receive operation. */
+            void (*rx_abort_async)();
+        #else
+            /**
+             * @brief Common read.
+             *
+             * Read 'size' bytes into 'data' from stream.
+             *
+             * @param [out] data buffer to read into.
+             * @param [in] size number of bytes to read.
+             * @return number of bytes read.
+             */
+            int (*read)(void *data, int size);
+
+            /**
+             * @brief Common write.
+             *
+             * Write 'size' bytes from 'data' to stream.
+             *
+             * @param [in] data buffer to write.
+             * @param [in] size number of bytes to write.
+             * @return number of bytes written.
+             */
+            int (*write)(const void *data, int size);
+        #endif
     } context_t;
 
     /**
      * @brief State of the modem.
-     * @see process() for a functional description.
+     * @see set_state_callback().
      */
     enum class State {
         offline,        /**< Low power mode. */
@@ -98,7 +131,10 @@ namespace gsm
         open,           /**< TCP socket is open. */
     };
 
-    /** Modem events. */
+    /**
+     * @brief Modem events.
+     * @see set_event_callback().
+     */
     enum class Event {
         timeout,            /**< A command timed out. */
         auth_error,         /**< An error occured during authenticate(). */
@@ -119,13 +155,23 @@ namespace gsm
              * @brief Constructor.
              * @param [in] context hardware specific callbacks for the driver.
              */
-            Modem(context_t *context);
+            Modem(context_t *context) : ctx_(context) {};
 
             /** Destructor. */
             ~Modem();
 
-            /** Handle communication with the modem. */
-            void process();
+            /**
+             * @brief Handle communication with the modem.
+             *
+             * The process method handles communication with the modem and
+             * controls the device state. If there is not a command
+             * already awaiting a response then the next command in the buffer
+             * is sent. Responses are handled based on the gsm::State.
+             *
+             * @param [in] delta_ms the number of milliseconds that have
+             * elapsed since the last call to process.
+             */
+            void process(int delta_ms);
 
             /**
              * @brief Set a function to be called on state changes.
@@ -153,17 +199,15 @@ namespace gsm
 
             /**
              * @brief Configure the SIM card PIN.
-             *
              * @param [in] pin SIM card pin
              * @param [in] pin_size length of 'pin'
-             *
              * @return -EINVAL if inputs are null.
+             * @return -EMSGSIZE if buffer size exceeded.
              */
             int unlock(const void *pin, int pin_size);
 
             /**
              * @brief Configure the Access Point Name (APN).
-             *
              * @param [in] apn access point name.
              * @param [in] apn_size length of 'apn'.
              * @param [in] user user name.
@@ -171,6 +215,7 @@ namespace gsm
              * @param [in] pwd password.
              * @param [in] pwd_size length of 'pwd'.
              * @param [in] timeout authentication timeout (ms).
+             * @return -EMSGSIZE if buffer size exceeded.
              */
             int authenticate(
                 const void *apn, int apn_size,
@@ -185,6 +230,7 @@ namespace gsm
              * @param [in] user user name.
              * @param [in] pwd password.
              * @param [in] timeout authentication timeout (ms).
+             * @return -EMSGSIZE if buffer size exceeded.
              */
             int authenticate(
                 const char *apn,
@@ -195,10 +241,16 @@ namespace gsm
             /** Re-initialize the driver state. */
             void reinit();
 
-            /** Reset the modem (+CFUN=1,1). */
+            /**
+             * @brief Reset the modem (+CFUN=1,1).
+             * @return -EMSGSIZE if buffer size exceeded.
+             */
             int reset();
 
-            /** Enter low power mode (+CFUN=0). */
+            /**
+             * @brief Enter low power mode (+CFUN=0).
+             * @return -EMSGSIZE if buffer size exceeded.
+             */
             int disable();
 
             /**
@@ -216,6 +268,7 @@ namespace gsm
              * @return -ENOTCONN if GPRS is not connected.
              * @return -EALREADY if handshaking is already in progress.
              * @return -EADDRINUSE if a socket is already open.
+             * @return -EMSGSIZE if buffer size exceeded.
              */
             int connect(
                 const void *host, int host_size, int port, int timeout=75000);
@@ -234,6 +287,7 @@ namespace gsm
              * @return -ENOTCONN if GPRS is not connected.
              * @return -EALREADY if handshaking is already in progress.
              * @return -EADDRINUSE if a socket is already open.
+             * @return -EMSGSIZE if buffer size exceeded.
              */
             int connect(const char *host, int port, int timeout=75000);
 
@@ -243,6 +297,7 @@ namespace gsm
              * @return -ENODEV if the device is not responsive.
              * @return -ENETUNREACH if the network is not available.
              * @return -ENOTSOCK if a connection is not established.
+             * @return -EMSGSIZE if buffer size exceeded.
              */
             int disconnect();
 
@@ -257,21 +312,17 @@ namespace gsm
              *
              * @param [out] data buffer to read into.
              * @param [in] size number of bytes to read.
-             *
-             * @see set_socket_callback
              */
             void receive(void *data, int size);
 
             /**
              * @brief Cancel an ongoing receive() call.
-             * @warning if the modem data transfer is in progress the data will
-             * be lost.
+             * @warning if transfer is in progress the data will be lost.
              */
             void stop_receive();
 
             /**
              * @brief Stage bytes to the tx ring buffer.
-             *
              * @param [in] data buffer to write.
              * @param [in] size number of bytes to write.
              */
@@ -279,12 +330,12 @@ namespace gsm
 
             /**
              * @brief Cancel an ongoing send() call.
-             * @warning if the modem data transfer is in progress '\0' will be
-             * sent for the remaining bytes.
+             * @warning if transfer is in progress '\0' will be sent for the
+             * remaining bytes.
              */
             void stop_send();
 
-            /** Number of bytes available in the modem's buffer. */
+            /** Number of bytes available to receive(). */
             inline int rx_available()
             {
                 return rx_available_;
@@ -293,8 +344,8 @@ namespace gsm
             /**
              * @brief Number of bytes available to send().
              *
-             * Buffers larger than this will be automatically broken up
-             * and sent over multiple transfers.
+             * Buffers larger than this will be broken up and sent over
+             * multiple transfers.
              */
             inline int tx_available()
             {
@@ -337,7 +388,7 @@ namespace gsm
                 return (tx_buffer_) ? tx_count_ : 0;
             }
 
-            /** Returns the device state. */
+            /** Return the device state. */
             inline State status()
             {
                 return device_state_;
@@ -394,10 +445,10 @@ namespace gsm
 
             /** State of data transmission when socket is open. */
             enum class SocketState {
-                idle,   /**< Socket is idle. */
-                rtr,    /**< Data is available and being read into the receive buffer. */
-                rts,    /**< A send buffer is ready to be sent to the modem. */
-                cts,    /**< Data is being written from the send buffer. */
+                idle,   /**< Socket idle. */
+                rtr,    /**< Socket request to receive. */
+                rts,    /**< Socket request to send. */
+                cts,    /**< Socket clear to send. */
             };
 
             /**
@@ -433,15 +484,31 @@ namespace gsm
             /** Write data to the socket. */
             int socket_send(int count);
 
+            /** Handle a command timeout. */
             void process_timeout();
+
+            /** Handle general command responses. */
             void process_general();
+
+            /** Handle authenticate(). */
             void process_authentication();
+
+            /** Handle connect(). */
             void process_handshaking();
+
+            /** Handle socket. */
             void process_socket();
 
+            /** Socket is idle. */
             void socket_state_idle();
+
+            /** Socket data is available and being read. */
             void socket_state_rtr();
+
+            /** A buffer is ready to be sent through the socket. */
             void socket_state_rts();
+
+            /** Data is being written from the send buffer. */
             void socket_state_cts();
 
             /** Driver operating context. */
@@ -465,25 +532,56 @@ namespace gsm
             /** Local IP address reported by AT+CIFSR. */
             char ip_address_[32] = {};
 
-            std::deque<Command*> cmd_buffer_;               /**< Command queue. */
-            Command *pending_ = nullptr;                    /**< Most recent command awaiting response. */
-            uint32_t command_timer_ = 0;                    /**< Time the pending command will expire. */
-            uint32_t update_timer_ = 0;                     /**< Time of the next state update. */
-            State device_state_ = State::reset;             /**< State of the modem. */
-            SocketState sock_state_ = SocketState::idle;    /**< State of data transmission through the socket. */
+            /** Command queue. */
+            std::deque<Command*> cmd_buffer_;
 
-            uint8_t response_[NOVAGSM_BUFFER_SIZE] = {};    /**< Modem response buffer. */
-            int response_size_ = 0;                         /**< Size of modem response. */
+            /** Most recent command awaiting response. */
+            Command *pending_ = nullptr;
 
-            const uint8_t *tx_buffer_ = nullptr;            /**< User buffer to send from. */
-            int tx_size_ = 0;                               /**< Size of 'tx_buffer_'. */
-            int tx_count_ = 0;                              /**< Number of bytes that have been read from 'tx_buffer_'. */
-            int tx_available_ = 0;                          /**< Tracks the space in the modem's tx buffer. */
+            /** Tracks the time elapsed since initialization (ms). */
+            unsigned int elapsed_ms_ = 0;
 
-            uint8_t *rx_buffer_ = nullptr;                  /**< User buffer to receive into. */
-            int rx_size_ = 0;                               /**< Size of 'rx_buffer_'. */
-            int rx_count_ = 0;                              /**< Number of bytes that have been written to 'rx_buffer_'. */
-            int rx_available_ = 0;                          /**< Tracks the number of bytes in the modem's rx buffer. */
+            /** Time the pending command will expire. */
+            unsigned int command_timer_ = 0;
+
+            /** Time of the next state update. */
+            unsigned int update_timer_ = 0;
+
+            /** State of the modem. */
+            State device_state_ = State::reset;
+
+            /** State of data transmission through the socket. */
+            SocketState sock_state_ = SocketState::idle;
+
+            /** Modem response buffer. */
+            uint8_t response_[NOVAGSM_BUFFER_SIZE] = {};
+
+            /** Size of modem's response. */
+            int response_size_ = 0;
+
+            /** User buffer to send from. */
+            const uint8_t *tx_buffer_ = nullptr;
+
+            /** Size of 'tx_buffer_'. */
+            int tx_size_ = 0;
+
+            /** Number of bytes that have been read from 'tx_buffer_'. */
+            int tx_count_ = 0;
+
+            /** Tracks the space in the modem's tx buffer. */
+            int tx_available_ = 0;
+
+            /** User buffer to receive into. */
+            uint8_t *rx_buffer_ = nullptr;
+
+            /** Size of 'rx_buffer_'. */
+            int rx_size_ = 0;
+
+            /** Number of bytes that have been written to 'rx_buffer_'. */
+            int rx_count_ = 0;
+
+            /** Tracks the number of bytes in the modem's rx buffer. */
+            int rx_available_ = 0;
     };
 
     /** Modem command object. */

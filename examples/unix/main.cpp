@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <algorithm>
 #include <fcntl.h>
 #include <unistd.h>
@@ -9,14 +10,6 @@
 
 // File descriptor for the serial port.
 int fd = -1;
-
-/** Returns time since initialization. */
-uint32_t millis()
-{
-    struct timespec now;
-    clock_gettime(CLOCK_REALTIME, &now);
-    return (now.tv_sec*1e9 + (now.tv_nsec))/1e6;
-}
 
 /**
  * @brief Read from the serial port.
@@ -45,6 +38,8 @@ int write(const void *data, int size)
 /** Application entry point. */
 int main()
 {
+    struct timespec last;
+
     // Open serial port
     fd = open("/dev/ttyUSB2", O_RDWR | O_NONBLOCK);
     if(fd < 0) {
@@ -56,21 +51,37 @@ int main()
     gsm::context_t ctx = {
         .read = read,
         .write = write,
-        .elapsed_ms = millis,
     };
 
     gsm::Modem modem(&ctx);
 
     // Wait for registration
-    while(!modem.registered())
-        modem.process();
+    while(!modem.registered()) {
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        const unsigned int delta_ms = (now.tv_sec - last.tv_sec) * 1e3
+            + (now.tv_nsec - last.tv_nsec) / 1e6;
+
+        if(delta_ms > 0) {
+            memcpy(&last, &now, sizeof(struct timespec));
+            modem.process(delta_ms);
+        }
+    }
 
     // Activate data connection
     while(!modem.ready()) {
         if(!modem.authenticating())
             modem.authenticate("hologram", nullptr, nullptr, 10000);
 
-        modem.process();
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        const unsigned int delta_ms = (now.tv_sec - last.tv_sec) * 1e3
+            + (now.tv_nsec - last.tv_nsec) / 1e6;
+
+        if(delta_ms > 0) {
+            memcpy(&last, &now, sizeof(struct timespec));
+            modem.process(delta_ms);
+        }
     }
 
     // Establish TCP connection
@@ -78,7 +89,15 @@ int main()
         if(!modem.handshaking())
             modem.connect("www.httpbin.org", 80, 10000);
 
-        modem.process();
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        const unsigned int delta_ms = (now.tv_sec - last.tv_sec) * 1e3
+            + (now.tv_nsec - last.tv_nsec) / 1e6;
+
+        if(delta_ms > 0) {
+            memcpy(&last, &now, sizeof(struct timespec));
+            modem.process(delta_ms);
+        }
     }
 
     // Send GET request
@@ -111,7 +130,15 @@ int main()
             }
         }
 
-        modem.process();
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        const int delta_ms = (now.tv_sec - last.tv_sec) * 1e3
+            + (now.tv_nsec - last.tv_nsec) / 1e6;
+
+        if(delta_ms > 0) {
+            memcpy(&last, &now, sizeof(struct timespec));
+            modem.process(delta_ms);
+        }
     }
 
     return 0;

@@ -16,32 +16,6 @@
 
 #include "debug.h"
 
-/**
- * @see gsm::State
- *
- * @dot
- * digraph {
- *     reset -> disabled            [ label = "disable()" ];
- *     disabled -> reset            [ label = "reset()" ];
- *     reset -> locked              [ label = "SIM locked" ];
- *     reset -> searching           [ label = "SIM ready" ];
- *     locked -> reset              [ label = "reset()" ];
- *     locked -> searching          [ label = "unlock()" ];
- *     searching -> reset           [ label = "reset()" ];
- *     searching -> registered      [ label = "" ];
- *     registered -> reset          [ label = "reset()" ];
- *     registered -> searching      [ label = "" ];
- *     registered -> ready          [ label = "authenticate()" ];
- *     ready -> reset               [ label = "reset()" ];
- *     ready -> searching           [ label = "no\nsignal" ];
- *     ready -> open                [ label = "connect()" ];
- *     open -> reset                [ label = "reset()" ];
- *     open -> searching            [ label = "no\nsignal" ];
- *     open -> ready                [ label = "disconnect()" ];
- * }
- * @enddot
- */
-
 /** How often to poll the modem. */
 static constexpr int kPollingInterval = 20;
 
@@ -68,53 +42,24 @@ static void *memstr(void *data, const char *target, int size)
 
 namespace gsm
 {
-    Modem::Modem(context_t *context) : ctx_(context)
-    {
-        update_timer_ = ctx_->elapsed_ms();
-    };
-
     Modem::~Modem()
     {
+        // Free command queue
         while(cmd_buffer_.size() > 0) {
             free(cmd_buffer_.front());
             cmd_buffer_.pop_front();
         }
     }
 
-    void Modem::process()
+    void Modem::process(int delta_ms)
     {
-        /**
-         * The process method handles communication with the modem and
-         * transitions between device states. If there is not a command
-         * already awaiting a response then the next command in the buffer is
-         * sent. Responses are handled based on the gsm::State.
-         *
-         * Any pending packets that exceed their timeout value are discarded
-         * and the error counter is incremented. If the error counter exceeds
-         * kErrorsMax the modem is assumed to be MIA and the driver returns to
-         * State::reset.  The error counter is reset whenever a valid response
-         * is received.
-         *
-         * If the signal is lost the connection is assumed to be broken and the
-         * driver returns to State::offline. The user must call authenticate()
-         * and connect() again to re-establish communication.
-         */
-
-        uint32_t elapsed_ms = ctx_->elapsed_ms();
+        elapsed_ms_ += delta_ms;
 
         if(pending_) {
             // Command pending - wait for response
-            if((int32_t)(elapsed_ms - command_timer_) > 0) {
-                // Command timeout
-                process_timeout();
-                return;
-            }
-
             #if defined(NOVAGSM_ASYNC)
-            // Asynchronous API
             response_size_ = ctx_->rx_count_async();
             #else
-            // Common API
             uint8_t *p_data = &response_[response_size_];
             int count = ctx_->read(
                 p_data, (NOVAGSM_BUFFER_SIZE - response_size_));
@@ -123,21 +68,21 @@ namespace gsm
                 response_size_ += count;
             #endif
 
-            if(response_size_ == 0)
-                return;
+            // Parse response
+            if(response_size_ > 0) {
+                if(connected())
+                    process_socket();
+                else if(authenticating())
+                    process_authentication();
+                else if(handshaking())
+                    process_handshaking();
+                else
+                    process_general();
+            }
 
-            if(connected()) {
-                process_socket();
-            }
-            else if(authenticating()) {
-                process_authentication();
-            }
-            else if(handshaking()) {
-                process_handshaking();
-            }
-            else {
-                process_general();
-            }
+            // Handle timeout
+            if(pending_ && (int)(elapsed_ms_ - command_timer_) > 0)
+                process_timeout();
         }
         else if(cmd_buffer_.size() > 0) {
             pending_ = cmd_buffer_.front();
@@ -152,12 +97,12 @@ namespace gsm
                 ctx_->write(pending_->data(), pending_->size());
             #endif
 
-            command_timer_ = elapsed_ms + pending_->timeout();
+            command_timer_ = elapsed_ms_ + pending_->timeout();
             response_size_ = 0;
         }
-        else if((int32_t)(elapsed_ms - update_timer_) > 0) {
+        else if((int)(elapsed_ms_ - update_timer_) > 0) {
             // Nothing queued - poll the modem
-            update_timer_ = elapsed_ms + kPollingInterval;
+            update_timer_ = elapsed_ms_ + kPollingInterval;
             poll_modem();
         }
     }
@@ -985,7 +930,7 @@ namespace gsm
                 #endif
             }
 
-            command_timer_ = ctx_->elapsed_ms() + kDefaultTimeout;
+            command_timer_ = elapsed_ms_ + kDefaultTimeout;
             sock_state_ = SocketState::cts;
         }
     }
