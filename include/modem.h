@@ -127,8 +127,9 @@ namespace gsm
      * @see set_state_callback().
      */
     enum class State {
+        probe,          /**< Waiting for device. */
+        init,           /**< Modem is initializing. */
         offline,        /**< Low power mode. */
-        reset,          /**< Modem is initializing. */
         locked,         /**< SIM is locked. */
         searching,      /**< Searching for the network. */
         registered,     /**< Network registers the modem. */
@@ -403,12 +404,6 @@ namespace gsm
                 return device_state_;
             }
 
-            /** Returns true if the modem is online. */
-            inline bool online()
-            {
-                return device_state_ != State::offline;
-            }
-
             /** Returns true if the modem is registered on the network. */
             inline bool registered()
             {
@@ -573,7 +568,7 @@ namespace gsm
             unsigned int update_timer_ = 0;
 
             /** State of the modem. */
-            State device_state_ = State::reset;
+            State device_state_ = State::probe;
 
             /** State of data transmission through the socket. */
             SocketState sock_state_ = SocketState::idle;

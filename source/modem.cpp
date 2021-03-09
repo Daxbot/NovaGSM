@@ -68,14 +68,25 @@ namespace gsm
 
             // Parse response
             if(response_size_ > 0) {
-                if(connected())
+                if(device_state_ == State::probe) {
+                    // Wait for an 'OK' response
+                    if(memstr(response_, "\r\nOK\r\n", response_size_)) {
+                        set_state(State::init);
+                        free_pending();
+                    }
+                }
+                else if(connected()) {
                     process_socket();
-                else if(authenticating())
+                }
+                else if(authenticating()) {
                     process_authentication();
-                else if(handshaking())
+                }
+                else if(handshaking()) {
                     process_handshaking();
-                else
+                }
+                else {
                     process_general();
+                }
             }
 
             // Handle timeout
@@ -166,7 +177,7 @@ namespace gsm
             return result;
         }
 
-        set_state(State::reset);
+        set_state(State::probe);
         return 0;
     }
 
@@ -251,9 +262,10 @@ namespace gsm
 
         switch(device_state_) {
             // Invalid state, return error
-            case State::offline:
+            case State::probe:
                 return -ENODEV;
-            case State::reset:
+            case State::init:
+            case State::offline:
             case State::locked:
             case State::searching:
                 return -ENETUNREACH;
@@ -298,9 +310,10 @@ namespace gsm
     {
         switch(device_state_) {
             // Invalid state, return error
-            case State::offline:
+            case State::probe:
                 return -ENODEV;
-            case State::reset:
+            case State::init:
+            case State::offline:
             case State::locked:
             case State::searching:
                 return -ENETUNREACH;
@@ -410,7 +423,10 @@ namespace gsm
         Command *cmd = nullptr;
 
         switch(device_state_) {
-            case State::reset:
+            case State::probe:
+                cmd = new (std::nothrow) Command(1000, "AT\r\n");
+                break;
+            case State::init:
             case State::locked:
                 // ATE0 - disable echo
                 // AT+CFUN? - power status
@@ -590,37 +606,39 @@ namespace gsm
                         }
                     }
                 }
-                else if(online()) {
-                    if(memstr(start, "+CPIN: READY", length)) {
-                        if(device_state_ < State::searching) {
-                            LOG_INFO("Modem online\n");
-                            set_state(State::searching);
-                        }
+                else if(memstr(start, "+CPIN: READY", length)) {
+                    if(device_state_ < State::searching) {
+                        LOG_INFO("Modem online\n");
+                        set_state(State::searching);
                     }
-                    else if(memstr(start, "+CPIN: SIM PUK", length)
-                        || memstr(start, "+CPIN: SIM PIN", length)) {
+                }
+                else if(memstr(start, "+CPIN: SIM PUK", length)
+                    || memstr(start, "+CPIN: SIM PIN", length)) {
+                    if(device_state_ != State::locked) {
                         LOG_INFO("SIM locked\n");
                         set_state(State::locked);
                     }
-                    else if(memstr(start, "+CPIN: NOT READY", length)) {
+                }
+                else if(memstr(start, "+CPIN: NOT READY", length)) {
+                    if(device_state_ != State::offline) {
                         LOG_INFO("Modem offline\n");
                         set_state(State::offline);
                     }
-                    else if(memstr(start, "+CFUN:", length)) {
-                        void *data = memchr(start, ':', length);
+                }
+                else if(memstr(start, "+CFUN:", length)) {
+                    void *data = memchr(start, ':', length);
 
-                        // +CFUN: %d\r\n
-                        // │    │
-                        // │    └ data
-                        // └ start
+                    // +CFUN: %d\r\n
+                    // │    │
+                    // │    └ data
+                    // └ start
 
-                        const int status = strtol(
-                            static_cast<char*>(data)+1, nullptr, 10);
+                    const int status = strtol(
+                        static_cast<char*>(data)+1, nullptr, 10);
 
-                        if(status == 0) {
-                            LOG_INFO("Modem offline\n");
-                            set_state(State::offline);
-                        }
+                    if(status == 0 && device_state_ != State::offline) {
+                        LOG_INFO("Modem offline\n");
+                        set_state(State::offline);
                     }
                 }
             }
