@@ -11,6 +11,13 @@
 // File descriptor for the serial port.
 int fd = -1;
 
+const char *data = "Lorem ipsum dolor sit amet, consectetur adipiscing elit,"
+"sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad"
+"minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea"
+"commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit"
+"esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat"
+"non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+
 /**
  * @brief Read from the serial port.
  *
@@ -113,14 +120,17 @@ int main()
     }
 
     // Send GET request
-    char tx_buffer[64];
+    char tx_buffer[1024];
     int tx_count = snprintf(tx_buffer, sizeof(tx_buffer),
-        "GET /ip HTTP/1.1\r\nHost: www.httpbin.org\r\n\r\n");
+        "GET /anything HTTP/1.1\r\n"
+        "Host: www.httpbin.org\r\n"
+        "data: \"%s\"\r\n\r\n",
+        data);
 
     modem.send(tx_buffer, tx_count);
 
     // Print response
-    char rx_buffer[512];
+    char rx_buffer[1024];
     while(modem.connected()) {
         if(!modem.rx_busy()) {
             if(modem.rx_available()) {
