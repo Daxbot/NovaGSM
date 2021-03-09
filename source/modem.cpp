@@ -148,7 +148,7 @@ namespace gsm
         reinit();
 
         // AT+CFUN=0 - minimum functionality mode
-        Command *cmd = new (std::nothrow) Command(10000, "AT+CFUN=0\r\n");
+        Command *cmd = new (std::nothrow) Command(10000, "AT+CFUN=0\r");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -167,7 +167,7 @@ namespace gsm
         reinit();
 
         // AT+CFUN=1,1 - reset phone module
-        Command *cmd = new (std::nothrow) Command(10000, "AT+CFUN=1,1;\r\n");
+        Command *cmd = new (std::nothrow) Command(10000, "AT+CFUN=1,1\r");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -188,7 +188,7 @@ namespace gsm
 
         // AT+CPIN=[pin] - enter pin
         Command *cmd = new (std::nothrow) Command(kDefaultTimeout,
-            "AT+CPIN=\"%.*s\"\r\n", pin_size, static_cast<const char*>(pin));
+            "AT+CPIN=\"%.*s\"\r", pin_size, static_cast<const char*>(pin));
 
         if(cmd == nullptr)
             return -ENOMEM;
@@ -215,7 +215,7 @@ namespace gsm
         // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
         Command *cmd = new (std::nothrow) Command(65000,
             "AT+CIPSHUT;+CIPMUX=0;+CIPRXGET=1;+CIPQSEND=1;"
-            "+CSTT=\"%.*s\",\"%.*s\",\"%.*s\"\r\n",
+            "+CSTT=\"%.*s\",\"%.*s\",\"%.*s\"\r",
             apn_size, static_cast<const char *>(apn),
             user_size, static_cast<const char *>(user),
             pwd_size, static_cast<const char *>(pwd));
@@ -231,7 +231,7 @@ namespace gsm
 
         // AT+CIICR - activate data connection
         // AT+CIFSR - get local IP address
-        cmd = new (std::nothrow) Command(85000, "AT+CIICR;+CIFSR\r\n");
+        cmd = new (std::nothrow) Command(85000, "AT+CIICR;+CIFSR\r");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -284,7 +284,7 @@ namespace gsm
 
         // AT+CIPSTART=[mode],[host],[port] - start a new connection
         Command *cmd = new (std::nothrow) Command(75000,
-            "AT+CIPSTART=\"TCP\",\"%.*s\",%d\r\n",
+            "AT+CIPSTART=\"TCP\",\"%.*s\",%d\r",
             host_size, static_cast<const char*>(host), port);
 
         if(cmd == nullptr)
@@ -329,7 +329,7 @@ namespace gsm
         }
 
         // AT+CIPCLOSE - close connection
-        Command *cmd = new (std::nothrow) Command(kDefaultTimeout, "AT+CIPCLOSE\r\n");
+        Command *cmd = new (std::nothrow) Command(kDefaultTimeout, "AT+CIPCLOSE\r");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -424,7 +424,7 @@ namespace gsm
 
         switch(device_state_) {
             case State::probe:
-                cmd = new (std::nothrow) Command(1000, "AT\r\n");
+                cmd = new (std::nothrow) Command(1000, "AT\r");
                 break;
             case State::init:
             case State::locked:
@@ -432,14 +432,14 @@ namespace gsm
                 // AT+CFUN? - power status
                 // AT+CPIN? - SIM status
                 cmd = new (std::nothrow) Command(10000,
-                    "ATE0;+CFUN?;+CPIN?\r\n");
+                    "ATE0;+CFUN?;+CPIN?\r");
                 break;
             case State::searching:
             case State::registered:
             case State::ready:
                 // AT+CSQ - signal quality report
                 // AT+CREG? - registration status
-                cmd = new (std::nothrow) Command(1000, "AT+CSQ;+CREG?\r\n");
+                cmd = new (std::nothrow) Command(1000, "AT+CSQ;+CREG?\r");
                 break;
             case State::open:
                 // AT+CSQ - signal quality report
@@ -447,7 +447,7 @@ namespace gsm
                 // AT+CIPSEND? - query available size of tx buffer
                 // AT+CIPSTATUS - TCP connection status
                 cmd = new (std::nothrow) Command(1000,
-                    "AT+CSQ;+CIPRXGET=4;+CIPSEND?;+CIPSTATUS\r\n");
+                    "AT+CSQ;+CIPRXGET=4;+CIPSEND?;+CIPSTATUS\r");
 
                 sock_state_ = SocketState::idle;
                 break;
@@ -475,7 +475,7 @@ namespace gsm
 
         // AT+CIPRXGET=2,[size] - read 'size' bytes from the socket
         Command *cmd = new (std::nothrow) Command(kDefaultTimeout,
-            "AT+CIPRXGET=2,%d\r\n", count);
+            "AT+CIPRXGET=2,%d\r", count);
 
         if(cmd == nullptr)
             return -ENOMEM;
@@ -500,8 +500,8 @@ namespace gsm
             return -EBUSY;
 
         // AT+CIPSEND=[size] - indicate that data is about to be sent
-        Command *cmd = new (std::nothrow) Command(kDefaultTimeout,
-            "AT+CIPSEND=%d\r\n", count);
+        Command *cmd = new (std::nothrow) Command(645000,
+            "AT+CIPSEND=%d\r", count);
 
         if(cmd == nullptr)
             return -ENOMEM;
@@ -593,7 +593,7 @@ namespace gsm
                     const uint8_t status = strtol(
                         static_cast<char*>(data)+1, nullptr, 10);
 
-                    if(status == 1 || status == 5) {
+                    if(signal_ != 99 && (status == 1 || status == 5)) {
                         if(device_state_ < State::registered) {
                             LOG_INFO("Registered\n");
                             set_state(State::registered);
@@ -657,6 +657,16 @@ namespace gsm
          * is successful once we get an IP address from AT+CIFSR.
          */
         if(memstr(response_, "\r\nOK\r\n", response_size_)) {
+            free_pending();
+            return;
+        }
+
+        if(memstr(response_, "\r\nERROR\r\n", response_size_)) {
+            LOG_INFO("Authentication error");
+            if(event_cb_)
+                event_cb_(Event::auth_error, event_cb_user_);
+
+            set_state(State::registered);
             free_pending();
             return;
         }
@@ -789,6 +799,7 @@ namespace gsm
                     stop_send();
                     stop_receive();
 
+                    sock_state_ = SocketState::idle;
                     set_state(State::ready);
                     break;
                 }
@@ -967,6 +978,27 @@ namespace gsm
 
     void Modem::socket_state_cts()
     {
+        if(memstr(response_, "CLOSED", response_size_)) {
+            LOG_ERROR("TCP socket disconnected\n");
+            free_pending();
+            if(event_cb_)
+                event_cb_(Event::tx_error, event_cb_user_);
+
+            sock_state_ = SocketState::idle;
+            set_state(State::ready);
+            return;
+        }
+
+        if(memstr(response_, "ERROR", response_size_)) {
+            LOG_ERROR("Send error\n");
+            free_pending();
+            if(event_cb_)
+                event_cb_(Event::tx_error, event_cb_user_);
+
+            sock_state_ = SocketState::idle;
+            return;
+        }
+
         uint8_t *start = static_cast<uint8_t*>(
             memstr(response_, "DATA ACCEPT:", response_size_));
 
