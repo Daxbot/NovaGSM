@@ -58,6 +58,7 @@ int write(const void *data, int size)
 int main()
 {
     struct timespec last;
+    clock_gettime(CLOCK_REALTIME, &last);
 
     // Open serial port
     fd = open("/dev/ttyUSB2", O_RDWR | O_NONBLOCK);

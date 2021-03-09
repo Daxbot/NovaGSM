@@ -109,7 +109,7 @@ namespace gsm
             command_timer_ = elapsed_us_ + (pending_->timeout() * 1000);
             response_size_ = 0;
         }
-        else if((int)(elapsed_us_ - update_timer_) > 0) {
+        else if(!update_timer_ || (int)(elapsed_us_ - update_timer_) > 0) {
             // Nothing queued - poll the modem
             update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
             poll_modem();
