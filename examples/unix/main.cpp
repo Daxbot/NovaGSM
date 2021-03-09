@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
+#include <termios.h>
 
 #include "modem.h"
 
@@ -66,6 +67,14 @@ int main()
         perror("Failed to open serial port");
         exit(1);
     }
+
+    // Configure port
+    struct termios settings;
+    tcgetattr(fd, &settings);
+    cfsetospeed(&settings, B115200);
+    cfmakeraw(&settings);
+    tcsetattr(fd, TCSANOW, &settings); /* apply the settings */
+    tcflush(fd, TCOFLUSH);
 
     // Initialize the driver
     gsm::context_t ctx = {
@@ -164,6 +173,7 @@ int main()
         }
     }
 
+    close(fd);
     return 0;
 }
 
