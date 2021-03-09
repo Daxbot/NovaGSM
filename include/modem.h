@@ -175,10 +175,10 @@ namespace gsm
              * already awaiting a response then the next command in the buffer
              * is sent. Responses are handled based on the gsm::State.
              *
-             * @param [in] delta_ms the number of milliseconds that have
+             * @param [in] delta_us the number of microseconds that have
              * elapsed since the last call to process.
              */
-            void process(int delta_ms);
+            void process(int delta_us);
 
             /**
              * @brief Set a function to be called on state changes.
@@ -564,7 +564,7 @@ namespace gsm
             Command *pending_ = nullptr;
 
             /** Tracks the time elapsed since initialization (ms). */
-            unsigned int elapsed_ms_ = 0;
+            unsigned int elapsed_us_ = 0;
 
             /** Time the pending command will expire. */
             unsigned int command_timer_ = 0;
@@ -641,7 +641,7 @@ namespace gsm
 
         private:
             int size_ = 0;                  /**< Size of payload. */
-            int timeout_ = 0;               /**< Response timeout (ms). */
+            int timeout_ = 0;               /**< Response timeout. */
             uint8_t data_[kBufferSize];     /**< Payload buffer. */
     };
 }

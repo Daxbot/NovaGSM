@@ -16,7 +16,7 @@
 
 #include "debug.h"
 
-/** How often to poll the modem. */
+/** How often to poll the modem (ms). */
 static constexpr int kPollingInterval = 20;
 
 /**
@@ -51,9 +51,9 @@ namespace gsm
         }
     }
 
-    void Modem::process(int delta_ms)
+    void Modem::process(int delta_us)
     {
-        elapsed_ms_ += delta_ms;
+        elapsed_us_ += delta_us;
 
         if(pending_) {
             // Command pending - wait for response
@@ -79,7 +79,7 @@ namespace gsm
             }
 
             // Handle timeout
-            if(pending_ && (int)(elapsed_ms_ - command_timer_) > 0)
+            if(pending_ && (int)(elapsed_us_ - command_timer_) > 0)
                 process_timeout();
         }
         else if(cmd_buffer_.size() > 0) {
@@ -95,12 +95,12 @@ namespace gsm
                 ctx_->write(pending_->data(), pending_->size());
             #endif
 
-            command_timer_ = elapsed_ms_ + pending_->timeout();
+            command_timer_ = elapsed_us_ + (pending_->timeout() * 1000);
             response_size_ = 0;
         }
-        else if((int)(elapsed_ms_ - update_timer_) > 0) {
+        else if((int)(elapsed_us_ - update_timer_) > 0) {
             // Nothing queued - poll the modem
-            update_timer_ = elapsed_ms_ + kPollingInterval;
+            update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
             poll_modem();
         }
     }
@@ -943,7 +943,7 @@ namespace gsm
             free(buffer);
         }
 
-        command_timer_ = elapsed_ms_ + kDefaultTimeout;
+        command_timer_ = elapsed_us_ + (kDefaultTimeout * 1000);
         sock_state_ = SocketState::cts;
     }
 

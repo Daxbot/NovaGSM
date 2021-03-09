@@ -78,12 +78,12 @@ int main()
     while(!modem.registered()) {
         struct timespec now;
         clock_gettime(CLOCK_REALTIME, &now);
-        const unsigned int delta_ms = (now.tv_sec - last.tv_sec) * 1e3
-            + (now.tv_nsec - last.tv_nsec) / 1e6;
+        const unsigned int delta_us = (now.tv_sec - last.tv_sec) * 1e6
+            + (now.tv_nsec - last.tv_nsec) / 1e3;
 
-        if(delta_ms > 0) {
+        if(delta_us > 0) {
             memcpy(&last, &now, sizeof(struct timespec));
-            modem.process(delta_ms);
+            modem.process(delta_us);
         }
     }
 
@@ -94,12 +94,12 @@ int main()
 
         struct timespec now;
         clock_gettime(CLOCK_REALTIME, &now);
-        const unsigned int delta_ms = (now.tv_sec - last.tv_sec) * 1e3
-            + (now.tv_nsec - last.tv_nsec) / 1e6;
+        const unsigned int delta_us = (now.tv_sec - last.tv_sec) * 1e6
+            + (now.tv_nsec - last.tv_nsec) / 1e3;
 
-        if(delta_ms > 0) {
+        if(delta_us > 0) {
             memcpy(&last, &now, sizeof(struct timespec));
-            modem.process(delta_ms);
+            modem.process(delta_us);
         }
     }
 
@@ -110,12 +110,12 @@ int main()
 
         struct timespec now;
         clock_gettime(CLOCK_REALTIME, &now);
-        const unsigned int delta_ms = (now.tv_sec - last.tv_sec) * 1e3
-            + (now.tv_nsec - last.tv_nsec) / 1e6;
+        const unsigned int delta_us = (now.tv_sec - last.tv_sec) * 1e6
+            + (now.tv_nsec - last.tv_nsec) / 1e3;
 
-        if(delta_ms > 0) {
+        if(delta_us > 0) {
             memcpy(&last, &now, sizeof(struct timespec));
-            modem.process(delta_ms);
+            modem.process(delta_us);
         }
     }
 
@@ -154,12 +154,12 @@ int main()
 
         struct timespec now;
         clock_gettime(CLOCK_REALTIME, &now);
-        const int delta_ms = (now.tv_sec - last.tv_sec) * 1e3
-            + (now.tv_nsec - last.tv_nsec) / 1e6;
+        const int delta_us = (now.tv_sec - last.tv_sec) * 1e6
+            + (now.tv_nsec - last.tv_nsec) / 1e3;
 
-        if(delta_ms > 0) {
+        if(delta_us > 0) {
             memcpy(&last, &now, sizeof(struct timespec));
-            modem.process(delta_ms);
+            modem.process(delta_us);
         }
     }
 
