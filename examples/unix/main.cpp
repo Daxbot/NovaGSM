@@ -20,7 +20,13 @@ int fd = -1;
  */
 int read(void *data, int size)
 {
-    return ::read(fd, data, size);
+    int count = ::read(fd, data, size);
+    if(count > 0) {
+        fputs("RX: ", stdout);
+        fwrite(data, count, 1, stdout);
+        fflush(stdout);
+    }
+    return count;
 }
 
 /**
@@ -32,7 +38,13 @@ int read(void *data, int size)
  */
 int write(const void *data, int size)
 {
-    return ::write(fd, data, size);
+    int count = ::write(fd, data, size);
+    if(count > 0) {
+        fputs("TX: ", stdout);
+        fwrite(data, count, 1, stdout);
+        fflush(stdout);
+    }
+    return count;
 }
 
 /** Application entry point. */
@@ -111,15 +123,14 @@ int main()
     char rx_buffer[512];
     while(modem.connected()) {
         if(!modem.rx_busy()) {
-            int count = modem.rx_count();
-            if(count < 0) {
+            if(modem.rx_available()) {
                 // Begin asynchronous receive
                 int rx_count = std::min(
                     static_cast<size_t>(modem.rx_available()), sizeof(rx_buffer));
 
                 modem.receive(rx_buffer, rx_count);
             }
-            else {
+            else if(modem.rx_count() > 0) {
                 // Receive completed - write data to stdout.
                 fwrite(rx_buffer, modem.rx_count(), 1, stdout);
                 fputc('\n', stdout);

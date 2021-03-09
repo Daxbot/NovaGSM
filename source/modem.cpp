@@ -412,9 +412,11 @@ namespace gsm
         switch(device_state_) {
             case State::reset:
             case State::locked:
+                // ATE0 - disable echo
                 // AT+CFUN? - power status
                 // AT+CPIN? - SIM status
-                cmd = new (std::nothrow) Command(5000, "AT+CFUN?;+CPIN?\r\n");
+                cmd = new (std::nothrow) Command(5000,
+                    "ATE0;+CFUN?;+CPIN?\r\n");
                 break;
             case State::searching:
             case State::registered:
@@ -425,11 +427,11 @@ namespace gsm
                 break;
             case State::open:
                 // AT+CSQ - signal quality report
-                // AT+CIPSTATUS - TCP connection status
                 // AT+CIPRXGET=4 - query socket unread bytes
                 // AT+CIPSEND? - query available size of tx buffer
+                // AT+CIPSTATUS - TCP connection status
                 cmd = new (std::nothrow) Command(1000,
-                    "AT+CSQ;+CIPSTATUS;+CIPRXGET=4;+CIPSEND?\r\n");
+                    "AT+CSQ;+CIPRXGET=4;+CIPSEND?;+CIPSTATUS\r\n");
 
                 sock_state_ = SocketState::idle;
                 break;
@@ -494,7 +496,9 @@ namespace gsm
             return result;
         }
 
-        LOG_VERBOSE("RTS %d bytes (%d)\n", count, (tx_size_ - tx_count_));
+        tx_pending_ = count;
+
+        LOG_VERBOSE("RTS %d bytes (%d)\n", tx_pending_, (tx_size_ - tx_count_));
         sock_state_ = SocketState::rts;
         return 0;
     }
@@ -770,6 +774,25 @@ namespace gsm
                     set_state(State::ready);
                     break;
                 }
+                else if(memstr(start, "CONNECT OK", length)) {
+                    if(rx_buffer_) {
+                        const int requested = (rx_size_ - rx_count_);
+                        const int available = std::min(
+                            rx_available_, kSocketMax);
+
+                        socket_receive(std::min(requested, available));
+                    }
+
+                    if(tx_buffer_) {
+                        const int requested = (tx_size_ - tx_count_);
+                        const int available = std::min(
+                            tx_available_, kSocketMax);
+
+                        socket_send(std::min(requested, available));
+                    }
+
+                    free_pending();
+                }
                 else if(memstr(start, "+CIPRXGET: 4", length)) {
                     void *data = memchr(start, ',', length);
 
@@ -785,11 +808,6 @@ namespace gsm
                         event_cb_(Event::new_data, event_cb_user_);
 
                     rx_available_ = count;
-
-                    const int requested = (rx_size_ - rx_count_);
-                    const int available = std::min(rx_available_, kSocketMax);
-                    if(rx_buffer_ && (requested > 0 || available > 0))
-                        socket_receive(std::min(requested, available));
                 }
                 else if(memstr(start, "+CIPSEND:", length)) {
                     void *data = memchr(start, ':', length);
@@ -801,11 +819,6 @@ namespace gsm
 
                     tx_available_ = strtol(
                         static_cast<char*>(data)+1, nullptr, 10);
-
-                    const int requested = (tx_size_ - tx_count_);
-                    const int available = std::min(tx_available_, kSocketMax);
-                    if(tx_buffer_ && (requested > 0 || available > 0))
-                        socket_send(std::min(requested, available));
                 }
                 else if(memstr(start, "+CSQ:", length)) {
                     void *data = memchr(start, ':', length);
@@ -823,8 +836,6 @@ namespace gsm
             start = end + 1;
             size -= length;
         }
-
-        free_pending();
     }
 
     void Modem::socket_state_rtr()
@@ -902,53 +913,38 @@ namespace gsm
         if(memchr(response_, '>', response_size_) == nullptr)
             return;
 
-        uint8_t *start = static_cast<uint8_t*>(
-            memstr(response_, "AT+CIPSEND=", response_size_));
+        if(tx_buffer_) {
+            // Send data
+            const uint8_t *buffer = tx_buffer_ + tx_count_;
+            #if defined(GSM_ASYNC)
+            ctx_->send_async(buffer, tx_pending_);
+            #else
+            ctx_->write(buffer, tx_pending_);
+            #endif
 
-        if(start) {
-            const int size = response_size_ - (start - response_);
-
-            void *data = memchr(start, '=', size);
-
-            // +CIPSEND=%d\r\n>
-            // │       │
-            // │       └ data
-            // └ start
-
-            const int count = strtol(
-                static_cast<char*>(data)+1, nullptr, 10);
-
-            if(tx_buffer_) {
-                // Send data
-                const uint8_t *buffer = tx_buffer_ + tx_count_;
-                #if defined(GSM_ASYNC)
-                ctx_->send_async(buffer, count);
-                #else
-                ctx_->write(buffer, count);
-                #endif
-
-                LOG_VERBOSE("CTS %d bytes (%d)\n",
-                    count, (tx_size_ - tx_count_));
-            }
-            else {
-                /*
-                 * The send was canceled, but the modem is still
-                 * expecting data. Send zeroes until the buffer is
-                 * full.
-                 */
-                uint8_t *buffer = static_cast<uint8_t*>(malloc(kBufferSize));
-                memset(buffer, '\0', kBufferSize);
-
-                #if defined(GSM_ASYNC)
-                ctx_->send_async(buffer, kBufferSize);
-                #else
-                ctx_->write(buffer, kBufferSize);
-                #endif
-            }
-
-            command_timer_ = elapsed_ms_ + kDefaultTimeout;
-            sock_state_ = SocketState::cts;
+            LOG_VERBOSE("CTS %d bytes (%d)\n",
+                tx_pending_, (tx_size_ - tx_count_));
         }
+        else {
+            /*
+                * The send was canceled, but the modem is still
+                * expecting data. Send zeroes until the buffer is
+                * full.
+                */
+            uint8_t *buffer = static_cast<uint8_t*>(malloc(kBufferSize));
+            memset(buffer, '\0', kBufferSize);
+
+            #if defined(GSM_ASYNC)
+            ctx_->send_async(buffer, tx_pending_);
+            #else
+            ctx_->write(buffer, tx_pending_);
+            #endif
+
+            free(buffer);
+        }
+
+        command_timer_ = elapsed_ms_ + kDefaultTimeout;
+        sock_state_ = SocketState::cts;
     }
 
     void Modem::socket_state_cts()

@@ -204,6 +204,23 @@ namespace gsm
                 event_cb_user_ = user;
             }
 
+            /** Re-initialize the driver state. */
+            void reinit();
+
+            /**
+             * @brief Reset the modem (+CFUN=1,1).
+             * @return -ENOMEM if memory allocation failed.
+             * @return -EMSGSIZE if buffer size exceeded.
+             */
+            int reset();
+
+            /**
+             * @brief Enter low power mode (+CFUN=0).
+             * @return -ENOMEM if memory allocation failed.
+             * @return -EMSGSIZE if buffer size exceeded.
+             */
+            int disable();
+
             /**
              * @brief Configure the SIM card PIN.
              * @param [in] pin SIM card pin
@@ -243,23 +260,6 @@ namespace gsm
                 const char *apn,
                 const char *user=nullptr,
                 const char *pwd=nullptr);
-
-            /** Re-initialize the driver state. */
-            void reinit();
-
-            /**
-             * @brief Reset the modem (+CFUN=1,1).
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int reset();
-
-            /**
-             * @brief Enter low power mode (+CFUN=0).
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int disable();
 
             /**
              * @brief Open a TCP socket.
@@ -595,6 +595,9 @@ namespace gsm
 
             /** Tracks the space in the modem's tx buffer. */
             int tx_available_ = 0;
+
+            /** Number of bytes staged by rts. */
+            int tx_pending_ = 0;
 
             /** User buffer to receive into. */
             uint8_t *rx_buffer_ = nullptr;
