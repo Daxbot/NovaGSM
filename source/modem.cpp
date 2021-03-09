@@ -415,7 +415,7 @@ namespace gsm
                 // ATE0 - disable echo
                 // AT+CFUN? - power status
                 // AT+CPIN? - SIM status
-                cmd = new (std::nothrow) Command(5000,
+                cmd = new (std::nothrow) Command(10000,
                     "ATE0;+CFUN?;+CPIN?\r\n");
                 break;
             case State::searching:
