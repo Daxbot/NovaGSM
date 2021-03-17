@@ -662,7 +662,7 @@ namespace gsm
         }
 
         if(memstr(response_, "\r\nERROR\r\n", response_size_)) {
-            LOG_INFO("Authentication error");
+            LOG_INFO("Authentication error\n");
             if(event_cb_)
                 event_cb_(Event::auth_error, event_cb_user_);
 
