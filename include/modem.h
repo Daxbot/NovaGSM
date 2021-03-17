@@ -444,6 +444,12 @@ namespace gsm
                return signal_;
            }
 
+           /** Returns the value reported by AT+CREG? */
+           inline int registration()
+           {
+               return reg_;
+           }
+
         private:
             class Command;
 
@@ -507,6 +513,9 @@ namespace gsm
             /** Handle a command timeout. */
             void process_timeout();
 
+            /** Handle device detection. */
+            void process_probe();
+
             /** Handle general command responses. */
             void process_general();
 
@@ -548,6 +557,9 @@ namespace gsm
 
             /** Signal value reported by AT+CSQ. */
             int signal_ = 99;
+
+            /** Registration value reported by AT+CREG? */
+            int reg_ = 0;
 
             /** Local IP address reported by AT+CIFSR. */
             char ip_address_[32] = {};
@@ -612,32 +624,47 @@ namespace gsm
     {
         public:
             /**
-             * @brief Command constructor.
+             * @brief Destructor.
+             * Frees data buffer.
+             */
+            ~Command();
+
+            /**
+             * @brief Create a new Command object.
              * @param [in] timeout maximum time to wait for a response (ms).
              * @param [in] command standard c format string.
              * @param [in] ... arguments for command formatting.
              */
-            Command(int timeout, const char *command, ...);
+            static Command *create(int timeout, const char *command, ...);
 
             /** Returns the timeout value (ms). */
-            int timeout() const {
+            int timeout() {
                 return timeout_;
             }
 
             /** Returns the size of the payload string. */
-            int size() const {
+            int size() {
                 return size_;
             }
 
             /** Returns the payload buffer. */
-            const uint8_t *data() const {
+            uint8_t *data() {
                 return data_;
             }
 
         private:
-            int size_ = 0;                  /**< Size of payload. */
-            int timeout_ = 0;               /**< Response timeout. */
-            uint8_t data_[kBufferSize];     /**< Payload buffer. */
+            /**
+             * @brief Constructor.
+             * @param [in] timeout maximum time to wait for a response (ms).
+             * @param [in] data pre-allocated data buffer.
+             * @param [in] size length of 'data' buffer.
+             */
+             Command(int timeout, uint8_t *data, int size)
+                 : timeout_(timeout), size_(size), data_(data) {};
+
+            int timeout_ = 0;           /**< Response timeout. */
+            int size_ = 0;              /**< Size of payload. */
+            uint8_t *data_;             /**< Payload buffer. */
     };
 }
 

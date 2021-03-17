@@ -56,6 +56,8 @@ namespace gsm
         elapsed_us_ += delta_us;
 
         if(pending_) {
+            const int last_size = response_size_;
+
             // Command pending - wait for response
             #if defined(NOVAGSM_ASYNC)
             response_size_ = ctx_->rx_count_async();
@@ -67,13 +69,9 @@ namespace gsm
             #endif
 
             // Parse response
-            if(response_size_ > 0) {
+            if(response_size_ > last_size) {
                 if(device_state_ == State::probe) {
-                    // Wait for an 'OK' response
-                    if(memstr(response_, "\r\nOK\r\n", response_size_)) {
-                        set_state(State::init);
-                        free_pending();
-                    }
+                    process_probe();
                 }
                 else if(connected()) {
                     process_socket();
@@ -148,7 +146,7 @@ namespace gsm
         reinit();
 
         // AT+CFUN=0 - minimum functionality mode
-        Command *cmd = new (std::nothrow) Command(10000, "AT+CFUN=0\r");
+        Command *cmd = Command::create(10000, "AT+CFUN=0\r");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -167,7 +165,7 @@ namespace gsm
         reinit();
 
         // AT+CFUN=1,1 - reset phone module
-        Command *cmd = new (std::nothrow) Command(10000, "AT+CFUN=1,1\r");
+        Command *cmd = Command::create(10000, "AT+CFUN=1,1\r");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -187,7 +185,7 @@ namespace gsm
             return -EINVAL;
 
         // AT+CPIN=[pin] - enter pin
-        Command *cmd = new (std::nothrow) Command(kDefaultTimeout,
+        Command *cmd = Command::create(kDefaultTimeout,
             "AT+CPIN=\"%.*s\"\r", pin_size, static_cast<const char*>(pin));
 
         if(cmd == nullptr)
@@ -213,7 +211,7 @@ namespace gsm
         // AT+CIPRXGET=1 - set manual data receive
         // AT+CIPQSEND=1 - set quick send
         // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
-        Command *cmd = new (std::nothrow) Command(65000,
+        Command *cmd = Command::create(65000,
             "AT+CIPSHUT;+CIPMUX=0;+CIPRXGET=1;+CIPQSEND=1;"
             "+CSTT=\"%.*s\",\"%.*s\",\"%.*s\"\r",
             apn_size, static_cast<const char *>(apn),
@@ -230,8 +228,7 @@ namespace gsm
         }
 
         // AT+CIICR - activate data connection
-        // AT+CIFSR - get local IP address
-        cmd = new (std::nothrow) Command(85000, "AT+CIICR;+CIFSR\r");
+        cmd = Command::create(85000, "AT+CIICR\r");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -283,7 +280,7 @@ namespace gsm
         }
 
         // AT+CIPSTART=[mode],[host],[port] - start a new connection
-        Command *cmd = new (std::nothrow) Command(75000,
+        Command *cmd = Command::create(75000,
             "AT+CIPSTART=\"TCP\",\"%.*s\",%d\r",
             host_size, static_cast<const char*>(host), port);
 
@@ -329,7 +326,7 @@ namespace gsm
         }
 
         // AT+CIPCLOSE - close connection
-        Command *cmd = new (std::nothrow) Command(kDefaultTimeout, "AT+CIPCLOSE\r");
+        Command *cmd = Command::create(kDefaultTimeout, "AT+CIPCLOSE\r");
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -424,32 +421,34 @@ namespace gsm
 
         switch(device_state_) {
             case State::probe:
-                cmd = new (std::nothrow) Command(1000, "AT\r");
+                cmd = Command::create(1000, "AT\r");
                 break;
             case State::init:
             case State::locked:
-                // ATE0 - disable echo
                 // AT+CFUN? - power status
                 // AT+CPIN? - SIM status
-                cmd = new (std::nothrow) Command(10000,
-                    "ATE0;+CFUN?;+CPIN?\r");
+                cmd = Command::create(10000, "AT+CFUN?;+CPIN?\r");
                 break;
             case State::searching:
             case State::registered:
             case State::ready:
                 // AT+CSQ - signal quality report
                 // AT+CREG? - registration status
-                cmd = new (std::nothrow) Command(1000, "AT+CSQ;+CREG?\r");
+                cmd = Command::create(1000, "AT+CSQ;+CREG?\r");
                 break;
             case State::open:
                 // AT+CSQ - signal quality report
                 // AT+CIPRXGET=4 - query socket unread bytes
                 // AT+CIPSEND? - query available size of tx buffer
                 // AT+CIPSTATUS - TCP connection status
-                cmd = new (std::nothrow) Command(1000,
+                cmd = Command::create(1000,
                     "AT+CSQ;+CIPRXGET=4;+CIPSEND?;+CIPSTATUS\r");
 
                 sock_state_ = SocketState::idle;
+                break;
+            case State::authenticating:
+                // AT+CIFSR - get local IP address
+                cmd = Command::create(1000, "AT+CIFSR\r");
                 break;
             default:
                 return 0;
@@ -474,7 +473,7 @@ namespace gsm
             return -EBUSY;
 
         // AT+CIPRXGET=2,[size] - read 'size' bytes from the socket
-        Command *cmd = new (std::nothrow) Command(kDefaultTimeout,
+        Command *cmd = Command::create(kDefaultTimeout,
             "AT+CIPRXGET=2,%d\r", count);
 
         if(cmd == nullptr)
@@ -500,7 +499,7 @@ namespace gsm
             return -EBUSY;
 
         // AT+CIPSEND=[size] - indicate that data is about to be sent
-        Command *cmd = new (std::nothrow) Command(645000,
+        Command *cmd = Command::create(645000,
             "AT+CIPSEND=%d\r", count);
 
         if(cmd == nullptr)
@@ -527,7 +526,7 @@ namespace gsm
                 if(event_cb_)
                     event_cb_(Event::auth_error, event_cb_user_);
 
-                set_state(State::registered);
+                set_state(State::searching);
                 break;
             case State::handshaking:
                 LOG_WARN("TCP connection timeout.\n");
@@ -553,6 +552,27 @@ namespace gsm
         }
 
         free_pending();
+    }
+
+    void Modem::process_probe()
+    {
+        // Wait for an 'OK' response
+        if(!memstr(response_, "\r\nOK\r\n", response_size_))
+            return;
+
+        free_pending();
+
+        // ATE0 - disable echo
+        Command *cmd = Command::create(1000, "ATE0\r");
+        if(cmd == nullptr)
+            return;
+
+        if(push_command(cmd) != 0) {
+            delete  cmd;
+            return;
+        }
+
+        set_state(State::init);
     }
 
     void Modem::process_general()
@@ -590,10 +610,10 @@ namespace gsm
                     // │        └ data
                     // └ start
 
-                    const uint8_t status = strtol(
+                    reg_ = strtol(
                         static_cast<char*>(data)+1, nullptr, 10);
 
-                    if(signal_ != 99 && (status == 1 || status == 5)) {
+                    if(signal_ != 99 && (reg_ == 1 || reg_ == 5)) {
                         if(device_state_ < State::registered) {
                             LOG_INFO("Registered\n");
                             set_state(State::registered);
@@ -666,7 +686,7 @@ namespace gsm
             if(event_cb_)
                 event_cb_(Event::auth_error, event_cb_user_);
 
-            set_state(State::registered);
+            set_state(State::searching);
             free_pending();
             return;
         }
@@ -1029,15 +1049,29 @@ namespace gsm
         }
     }
 
-    Modem::Command::Command(int timeout_ms, const char *command, ...)
-        : timeout_(timeout_ms)
+    Modem::Command::~Command()
     {
+        if(data_)
+            free(data_);
+    }
+
+    Modem::Command *Modem::Command::create(int timeout_ms, const char *command, ...)
+    {
+        char *buffer = static_cast<char*>(malloc(kBufferSize));
+        if(buffer == nullptr)
+            return nullptr;
+
         va_list argp;
-
-        char *data = reinterpret_cast<char*>(data_);
-
         va_start(argp, command);
-        size_ = vsnprintf(data, kBufferSize, command, argp);
+        int size = vsnprintf(buffer, kBufferSize, command, argp);
         va_end(argp);
+
+        uint8_t *data = static_cast<uint8_t*>(realloc(buffer, size));
+        if(data == nullptr) {
+            free(buffer);
+            return nullptr;
+        }
+
+        return new (std::nothrow) Command(timeout_ms, data, size);
     }
 }
