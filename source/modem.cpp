@@ -135,6 +135,9 @@ namespace gsm
         }
 
         signal_ = 99;
+        service_ = 0;
+        reg_ = 0;
+
         memset(ip_address_, '\0', sizeof(ip_address_));
 
         sock_state_ = SocketState::idle;
@@ -449,7 +452,8 @@ namespace gsm
             case State::ready:
                 // AT+CSQ - signal quality report
                 // AT+CREG? - registration status
-                cmd = Command::create(1000, "AT+CSQ;+CREG?\r");
+                // AT+CGATT? - GPRS service status
+                cmd = Command::create(1000, "AT+CSQ;+CREG?;+CGATT?\r");
                 break;
             case State::open:
                 // AT+CSQ - signal quality report
@@ -631,19 +635,17 @@ namespace gsm
 
                     reg_ = strtol(
                         static_cast<char*>(data)+1, nullptr, 10);
+                }
+                else if(memstr(start, "+CGATT:", length)) {
+                    void *data = memchr(start, ':', length);
 
-                    if(signal_ != 99 && (reg_ == 1 || reg_ == 5)) {
-                        if(device_state_ < State::registered) {
-                            LOG_INFO("Registered\n");
-                            set_state(State::registered);
-                        }
-                    }
-                    else {
-                        if(device_state_ >= State::registered) {
-                            LOG_INFO("Searching for network\n");
-                            set_state(State::searching);
-                        }
-                    }
+                    // +CGATT: %d\r\n
+                    // │     │
+                    // │     └ data
+                    // └ start
+
+                    service_ = strtol(
+                        static_cast<char*>(data)+1, nullptr, 10);
                 }
                 else if(memstr(start, "+CPIN: READY", length)) {
                     if(device_state_ < State::searching) {
@@ -684,6 +686,19 @@ namespace gsm
 
             start = end + 1;
             size -= length;
+        }
+
+        if(signal_ != 99 && service_ && (reg_ == 1 || reg_ == 5)) {
+            if(device_state_ < State::registered) {
+                LOG_INFO("Registered\n");
+                set_state(State::registered);
+            }
+        }
+        else {
+            if(device_state_ >= State::registered) {
+                LOG_INFO("Searching for network\n");
+                set_state(State::searching);
+            }
         }
 
         free_pending();

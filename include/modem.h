@@ -457,6 +457,12 @@ namespace gsm
                return reg_;
            }
 
+           /** Returns the value reported by AT+CGATT? */
+           inline int service()
+           {
+               return service_;
+           }
+
         private:
             class Command;
 
@@ -570,6 +576,9 @@ namespace gsm
 
             /** Registration value reported by AT+CREG? */
             int reg_ = 0;
+
+            /** GPRS service status reported by AT+CGATT? */
+            int service_ = 0;
 
             /** Local IP address reported by AT+CIFSR. */
             char ip_address_[32] = {};
