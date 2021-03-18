@@ -137,6 +137,7 @@ namespace gsm
         ready,          /**< Data connection active. */
         handshaking,    /**< Attempting to establish TCP connection. */
         open,           /**< TCP socket is open. */
+        closing,        /**< TCP socket is closing. */
     };
 
     /**
@@ -428,6 +429,12 @@ namespace gsm
                 return device_state_ == State::handshaking;
             }
 
+            /** Returns true if the socket is being closed. */
+            inline bool closing()
+            {
+                return device_state_ == State::closing;
+            }
+
            /** Returns true if a TCP connection is established. */
             inline bool connected()
             {
@@ -524,6 +531,9 @@ namespace gsm
 
             /** Handle connect(). */
             void process_handshaking();
+
+            /** Handle disconnect(). */
+            void process_close();
 
             /** Handle socket. */
             void process_socket();

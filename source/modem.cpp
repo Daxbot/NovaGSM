@@ -82,6 +82,9 @@ namespace gsm
                 else if(handshaking()) {
                     process_handshaking();
                 }
+                else if(closing()) {
+                    process_close();
+                }
                 else {
                     process_general();
                 }
@@ -273,6 +276,8 @@ namespace gsm
                 return -EALREADY;
             case State::open:
                 return -EADDRINUSE;
+            case State::closing:
+                return -EBUSY;
 
             // Continue
             case State::ready:
@@ -319,6 +324,8 @@ namespace gsm
             case State::ready:
             case State::handshaking:
                 return -ENOTSOCK;
+            case State::closing:
+                return -EALREADY;
 
             // Continue
             case State::open:
@@ -334,6 +341,8 @@ namespace gsm
         if(result)
             delete cmd;
 
+        LOG_INFO("Closing TCP connection...\n");
+        set_state(State::closing);
         return result;
     }
 
@@ -382,9 +391,12 @@ namespace gsm
 
     void Modem::free_pending()
     {
-        assert(pending_);
-        delete pending_;
-        pending_ = nullptr;
+        if(pending_) {
+            delete pending_;
+            pending_ = nullptr;
+        }
+
+        response_size_ = 0;
     }
 
     bool Modem::response_complete()
@@ -546,6 +558,10 @@ namespace gsm
                     else if(sock_state_ == SocketState::rtr)
                         event_cb_(Event::rx_error, event_cb_user_);
                 }
+                break;
+            case State::closing:
+                LOG_WARN("Close timeout\n");
+                set_state(State::ready);
                 break;
             default:
                 LOG_WARN("Command timeout\n");
@@ -726,9 +742,6 @@ namespace gsm
 
     void Modem::process_handshaking()
     {
-        if(!response_complete())
-            return;
-
         // Parse lines
         uint8_t *start = response_;
         int size = response_size_;
@@ -749,17 +762,49 @@ namespace gsm
                     break;
                 }
                 else if(memstr(start, "ALREADY CONNECT", length)) {
-                    LOG_INFO("Closing old connection\n");
-                    disconnect();
-                    set_state(State::ready);
+                    set_state(State::open);
                     free_pending();
                     break;
                 }
                 else if(memstr(start, "CONNECT FAIL", length)) {
                     LOG_WARN("TCP connection failed\n");
                     set_state(State::ready);
+                    if(event_cb_)
+                        event_cb_(Event::conn_error, event_cb_user_);
+
                     free_pending();
                     break;
+                }
+            }
+
+            start = end + 1;
+            size -= length;
+        }
+    }
+
+    void Modem::process_close()
+    {
+        // Parse lines
+        uint8_t *start = response_;
+        int size = response_size_;
+
+        while(size > 4) {
+            uint8_t *end = static_cast<uint8_t*>(memchr(start, '\n', size));
+            if(end == nullptr)
+                break;
+
+            int length = (end - start) + 1;
+            if(length > 4) {
+                // Expected responses to AT+CIPCLOSE
+                if(memstr(start, "CLOSE OK", length)) {
+                    LOG_INFO("TCP socket closed\n");
+                    set_state(State::ready);
+                    free_pending();
+                }
+                else if(memstr(start, "ERROR", length)) {
+                    LOG_INFO("Error during close\n");
+                    set_state(State::ready);
+                    free_pending();
                 }
             }
 
@@ -792,8 +837,7 @@ namespace gsm
 
     void Modem::socket_state_idle()
     {
-        // Wait for 'OK'
-        if(!memstr(response_, "\r\nOK\r\n", response_size_))
+        if(!response_complete())
             return;
 
         // Parse lines
@@ -816,8 +860,7 @@ namespace gsm
                     set_state(State::offline);
                     break;
                 }
-                else if(memstr(start, "CLOSE OK", length)
-                    || memstr(start, "TCP CLOSED", length)) {
+                else if(memstr(start, "TCP CLOSED", length)) {
                     LOG_INFO("TCP socket disconnected\n");
 
                     stop_send();
@@ -884,6 +927,9 @@ namespace gsm
                     signal_ = strtol(
                         static_cast<char*>(data)+1, nullptr, 10);
                 }
+                else if(memstr(start, "ALREADY CONNECT", length)) {
+                    free_pending();
+                }
             }
 
             start = end + 1;
@@ -894,7 +940,7 @@ namespace gsm
     void Modem::socket_state_rtr()
     {
         if(memstr(response_, "ERROR", response_size_)) {
-            LOG_ERROR("Receive error: %.*s\n", response_size_, response_);
+            LOG_ERROR("Error during receive\n");
             free_pending();
             if(event_cb_)
                 event_cb_(Event::rx_error, event_cb_user_);
