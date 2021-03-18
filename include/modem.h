@@ -452,16 +452,22 @@ namespace gsm
            }
 
            /** Returns the value reported by AT+CREG? */
-           inline int registration()
+           inline int creg()
            {
-               return reg_;
+               return creg_;
            }
 
-           /** Returns the value reported by AT+CGATT? */
-           inline int service()
+           /** Returns the value reported by AT+CGREG? */
+           inline int cgreg()
            {
-               return service_;
+               return cgreg_;
            }
+
+          /** Returns the value reported by AT+CGREG? */
+          inline int cereg()
+          {
+              return cereg_;
+          }
 
         private:
             class Command;
@@ -575,7 +581,13 @@ namespace gsm
             int signal_ = 99;
 
             /** Registration value reported by AT+CREG? */
-            int reg_ = 0;
+            int creg_ = 0;
+
+            /** Registration value reported by AT+CGREG? */
+            int cgreg_ = 0;
+
+            /** Registration value reported by AT+CEREG? */
+            int cereg_ = 0;
 
             /** GPRS service status reported by AT+CGATT? */
             int service_ = 0;

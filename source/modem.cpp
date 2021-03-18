@@ -136,7 +136,9 @@ namespace gsm
 
         signal_ = 99;
         service_ = 0;
-        reg_ = 0;
+        creg_ = 0;
+        cgreg_ = 0;
+        cereg_ = 0;
 
         memset(ip_address_, '\0', sizeof(ip_address_));
 
@@ -451,9 +453,13 @@ namespace gsm
             case State::registered:
             case State::ready:
                 // AT+CSQ - signal quality report
-                // AT+CREG? - registration status
+                // AT+CREG? - network registration status
+                // AT+CGREG? - GPRS registration status
+                // AT+CEREG? - EPS registration status
                 // AT+CGATT? - GPRS service status
-                cmd = Command::create(1000, "AT+CSQ;+CREG?;+CGATT?\r");
+                cmd = Command::create(1000,
+                    "AT+CSQ;+CREG?;+CGREG?;+CEREG?;+CGATT?\r");
+
                 break;
             case State::open:
                 // AT+CSQ - signal quality report
@@ -628,12 +634,34 @@ namespace gsm
                 else if(memstr(start, "+CREG:", length)) {
                     void *data = memchr(start, ',', length);
 
-                    // +CREG: %d,%d,%s,%s\r\n
+                    // +CREG: %d,%d\r\n
                     // │        │
                     // │        └ data
                     // └ start
 
-                    reg_ = strtol(
+                    creg_ = strtol(
+                        static_cast<char*>(data)+1, nullptr, 10);
+                }
+                else if(memstr(start, "+CGREG:", length)) {
+                    void *data = memchr(start, ',', length);
+
+                    // +CGREG: %d,%d\r\n
+                    // │         │
+                    // │         └ data
+                    // └ start
+
+                    cgreg_ = strtol(
+                        static_cast<char*>(data)+1, nullptr, 10);
+                }
+                else if(memstr(start, "+CEREG:", length)) {
+                    void *data = memchr(start, ',', length);
+
+                    // +CEREG: %d,%d\r\n
+                    // │         │
+                    // │         └ data
+                    // └ start
+
+                    cereg_ = strtol(
                         static_cast<char*>(data)+1, nullptr, 10);
                 }
                 else if(memstr(start, "+CGATT:", length)) {
@@ -688,7 +716,7 @@ namespace gsm
             size -= length;
         }
 
-        if(signal_ != 99 && service_ && (reg_ == 1 || reg_ == 5)) {
+        if(signal_ != 99 && service_ && (creg_ == 1 || creg_ == 5)) {
             if(device_state_ < State::registered) {
                 LOG_INFO("Registered\n");
                 set_state(State::registered);
