@@ -592,7 +592,8 @@ namespace gsm
         free_pending();
 
         // ATE0 - disable echo
-        Command *cmd = Command::create(1000, "ATE0\r");
+        // AT+CNMP - preferred mode selection
+        Command *cmd = Command::create(1000, "ATE0;+CNMP=%d\r", mode_);
         if(cmd == nullptr)
             return;
 

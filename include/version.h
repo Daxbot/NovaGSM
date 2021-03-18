@@ -7,7 +7,7 @@ namespace gsm
     constexpr int kVersionMajor = 4;
 
     /** Major version, increment for functionality changes. */
-    constexpr int kVersionMinor = 1;
+    constexpr int kVersionMinor = 2;
 
     /** Trivial version, increment for small fixes. */
     constexpr int kVersionTrivial = 0;

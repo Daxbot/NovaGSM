@@ -163,8 +163,10 @@ namespace gsm
             /**
              * @brief Constructor.
              * @param [in] context hardware specific callbacks for the driver.
+             * @param [in] mode preferred mode selection (AT+CNMP).
              */
-            Modem(context_t *context) : ctx_(context) {};
+            Modem(context_t *context, int mode=38)
+                : ctx_(context), mode_(mode) {};
 
             /** Destructor. */
             ~Modem();
@@ -564,6 +566,9 @@ namespace gsm
 
             /** Driver operating context. */
             context_t const *ctx_;
+
+            /** Mode for AT+CNMP. */
+            int mode_ = 0;
 
             /** User function to call on state change event. */
             void (*state_cb_)(State state, void *user) = nullptr;
