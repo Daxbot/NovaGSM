@@ -375,6 +375,9 @@ namespace gsm
         device_state_ = state;
         if(state_cb_)
             state_cb_(device_state_, state_cb_user_);
+
+        // Refresh update timer
+        update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
     }
 
     void Modem::free_pending()
@@ -723,8 +726,7 @@ namespace gsm
 
     void Modem::process_handshaking()
     {
-        // Wait for 'OK'
-        if(!memstr(response_, "\r\nOK\r\n", response_size_))
+        if(!response_complete())
             return;
 
         // Parse lines
@@ -747,7 +749,9 @@ namespace gsm
                     break;
                 }
                 else if(memstr(start, "ALREADY CONNECT", length)) {
-                    set_state(State::open);
+                    LOG_INFO("Closing old connection\n");
+                    disconnect();
+                    set_state(State::ready);
                     free_pending();
                     break;
                 }
@@ -824,7 +828,7 @@ namespace gsm
                     break;
                 }
                 else if(memstr(start, "CONNECT OK", length)) {
-                    if(rx_buffer_) {
+                    if(rx_buffer_ && rx_available_) {
                         const int requested = (rx_size_ - rx_count_);
                         const int available = std::min(
                             rx_available_, kSocketMax);
@@ -832,7 +836,7 @@ namespace gsm
                         socket_receive(std::min(requested, available));
                     }
 
-                    if(tx_buffer_) {
+                    if(tx_buffer_ && tx_available_) {
                         const int requested = (tx_size_ - tx_count_);
                         const int available = std::min(
                             tx_available_, kSocketMax);
@@ -935,7 +939,8 @@ namespace gsm
 
             rx_available_ -= count;
             if(rx_buffer_) {
-                memcpy(rx_buffer_ + rx_count_, data, count);
+                uint8_t *destination = rx_buffer_ + rx_count_;
+                memcpy(destination, static_cast<uint8_t*>(data)+1, count);
 
                 rx_count_ += count;
                 if(rx_count_ == rx_size_ && event_cb_)
