@@ -216,6 +216,31 @@ namespace gsm
         const void *pwd,
         int pwd_size)
     {
+        if(apn == nullptr || apn_size == 0)
+            return -EINVAL;
+
+        switch(device_state_) {
+            // Invalid state, return error
+            case State::probe:
+                return -ENODEV;
+            case State::init:
+            case State::offline:
+            case State::locked:
+            case State::searching:
+                return -ENETUNREACH;
+            case State::authenticating:
+                return -EALREADY;
+            case State::handshaking:
+            case State::open:
+            case State::closing:
+                return -EBUSY;
+
+            // Continue
+            case State::registered:
+            case State::ready:
+                break;
+        }
+
         // AT+CIPSHUT - reset GPRS context
         // AT+CIPMUX=0 - set single IP mode
         // AT+CIPRXGET=1 - set manual data receive
@@ -264,7 +289,7 @@ namespace gsm
 
     int Modem::connect(const void *host, int host_size, int port)
     {
-        if(host == nullptr)
+        if(host == nullptr || host_size == 0)
             return -EINVAL;
 
         switch(device_state_) {

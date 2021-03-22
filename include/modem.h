@@ -243,6 +243,11 @@ namespace gsm
              * @param [in] user_size length of 'user'.
              * @param [in] pwd password.
              * @param [in] pwd_size length of 'pwd'.
+             * @return -EINVAL if 'apn' is null.
+             * @return -ENODEV if the device is not responsive.
+             * @return -ENETUNREACH if the network is not available.
+             * @return -EALREADY if authentication is already in progress.
+             * @return -EBUSY if the socket is open.
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
@@ -257,6 +262,11 @@ namespace gsm
              * @param [in] apn access point name.
              * @param [in] user user name.
              * @param [in] pwd password.
+             * @return -EINVAL if 'apn' is null.
+             * @return -ENODEV if the device is not responsive.
+             * @return -ENETUNREACH if the network is not available.
+             * @return -EALREADY if authentication is already in progress.
+             * @return -EBUSY if the socket is open.
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
@@ -273,12 +283,13 @@ namespace gsm
              * @param [in] host server ip address.
              * @param [in] host_size length of 'host'.
              * @param [in] port server port number.
-             * @return -EINVAL if inputs are null.
+             * @return -EINVAL if 'host' is null.
              * @return -ENODEV if the device is not responsive.
              * @return -ENETUNREACH if the network is not available.
              * @return -ENOTCONN if GPRS is not connected.
              * @return -EALREADY if handshaking is already in progress.
              * @return -EADDRINUSE if a socket is already open.
+             * @return -EBUSY disconnecting previous socket - try again.
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
@@ -298,6 +309,7 @@ namespace gsm
              * @return -ENOTCONN if GPRS is not connected.
              * @return -EALREADY if handshaking is already in progress.
              * @return -EADDRINUSE if a socket is already open.
+             * @return -EBUSY disconnecting previous socket - try again.
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
