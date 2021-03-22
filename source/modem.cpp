@@ -147,6 +147,8 @@ namespace gsm
         tx_buffer_ = nullptr;
         rx_available_ = 0;
         tx_available_ = 0;
+
+        set_state(State::probe);
     }
 
     int Modem::disable()
