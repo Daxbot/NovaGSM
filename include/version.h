@@ -10,7 +10,7 @@ namespace gsm
     constexpr int kVersionMinor = 0;
 
     /** Trivial version, increment for small fixes. */
-    constexpr int kVersionTrivial = 0;
+    constexpr int kVersionTrivial = 1;
 }
 
 #endif // NOVAGSM_VERSION_H

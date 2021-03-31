@@ -501,7 +501,8 @@ namespace gsm
         switch(device_state_) {
             case State::reset:
                 set_state(State::probe);
-                __attribute__ ((fallthrough));
+                cmd = Command::create(1000, "AT\r");
+                break;
             case State::probe:
                 cmd = Command::create(1000, "AT\r");
                 break;
