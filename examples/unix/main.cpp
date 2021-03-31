@@ -12,6 +12,10 @@
 // File descriptor for the serial port.
 int fd = -1;
 
+// Access point name
+const char *apn = "hologram";
+
+// Data to send
 const char *data = "Lorem ipsum dolor sit amet, consectetur adipiscing elit,"
 "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad"
 "minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea"
@@ -84,6 +88,22 @@ int main()
 
     gsm::Modem modem(&ctx);
 
+    // Wait for probe
+    while(!modem.detected()) {
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        const unsigned int delta_us = (now.tv_sec - last.tv_sec) * 1e6
+            + (now.tv_nsec - last.tv_nsec) / 1e3;
+
+        if(delta_us > 0) {
+            memcpy(&last, &now, sizeof(struct timespec));
+            modem.process(delta_us);
+        }
+    }
+
+    // Configure APN
+    modem.configure(apn);
+
     // Wait for registration
     while(!modem.registered()) {
         struct timespec now;
@@ -100,7 +120,7 @@ int main()
     // Activate data connection
     while(!modem.ready()) {
         if(!modem.authenticating())
-            modem.authenticate("hologram");
+            modem.authenticate();
 
         struct timespec now;
         clock_gettime(CLOCK_REALTIME, &now);

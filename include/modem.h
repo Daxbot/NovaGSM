@@ -127,6 +127,7 @@ namespace gsm
      * @see set_state_callback().
      */
     enum class State {
+        reset,          /**< Reset pending. */
         probe,          /**< Waiting for device. */
         init,           /**< Modem is initializing. */
         offline,        /**< Low power mode. */
@@ -172,6 +173,22 @@ namespace gsm
             ~Modem();
 
             /**
+             * @brief Set a function to be called on state changes.
+             * @param [in] func function to be called.
+             * @param [in] user pointer to be passed when 'func' is called.
+             */
+            void set_state_callback(
+                void (*func)(State state, void *user), void *user=nullptr);
+
+            /**
+             * @brief Set a function to be called on a modem event.
+             * @param [in] func function to be called.
+             * @param [in] user pointer to be passed when 'func' is called.
+             */
+            void set_event_callback(
+                void (*func)(Event event, void *user), void *user=nullptr);
+
+            /**
              * @brief Handle communication with the modem.
              *
              * The process method handles communication with the modem and
@@ -183,30 +200,6 @@ namespace gsm
              * elapsed since the last call to process.
              */
             void process(int delta_us);
-
-            /**
-             * @brief Set a function to be called on state changes.
-             * @param [in] func function to be called.
-             * @param [in] user pointer to be passed when 'func' is called.
-             */
-            inline void set_state_callback(
-                void (*func)(State state, void *user), void *user=nullptr)
-            {
-                state_cb_ = func;
-                state_cb_user_ = user;
-            }
-
-            /**
-             * @brief Set a function to be called on a modem event.
-             * @param [in] func function to be called.
-             * @param [in] user pointer to be passed when 'func' is called.
-             */
-            inline void set_event_callback(
-                void (*func)(Event event, void *user), void *user=nullptr)
-            {
-                event_cb_ = func;
-                event_cb_user_ = user;
-            }
 
             /** Re-initialize the driver state. */
             void reinit();
@@ -228,22 +221,29 @@ namespace gsm
             /**
              * @brief Configure the SIM card PIN.
              * @param [in] pin SIM card pin
-             * @param [in] pin_size length of 'pin'
              * @return -EINVAL if inputs are null.
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
-            int unlock(const void *pin, int pin_size);
+            int unlock(const char *pin);
 
             /**
-             * @brief Configure the Access Point Name (APN).
+             * @brief Configure the GPRS context.
+             *
              * @param [in] apn access point name.
-             * @param [in] apn_size length of 'apn'.
-             * @param [in] user user name.
-             * @param [in] user_size length of 'user'.
-             * @param [in] pwd password.
-             * @param [in] pwd_size length of 'pwd'.
-             * @return -EINVAL if 'apn' is null.
+             * @return -EINVAL if 'apn' is null or larger than 63 bytes.
+             * @return -ENODEV if the device is not responsive.
+             * @return -ENOMEM if memory allocation failed.
+             * @return -EMSGSIZE if buffer size exceeded.
+             */
+            int configure(const char *apn);
+
+            /**
+             * @brief Connect to GPRS.
+             *
+             * @param [in] user access point user name.
+             * @param [in] pwd access point password.
+             * @return -EINVAL if the GPRS context has not been configured.
              * @return -ENODEV if the device is not responsive.
              * @return -ENETUNREACH if the network is not available.
              * @return -EALREADY if authentication is already in progress.
@@ -251,50 +251,7 @@ namespace gsm
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
-            int authenticate(
-                const void *apn, int apn_size,
-                const void *user, int user_size,
-                const void *pwd, int pwd_size);
-
-            /**
-             * @brief Configure the Access Point Name (APN).
-             *
-             * @param [in] apn access point name.
-             * @param [in] user user name.
-             * @param [in] pwd password.
-             * @return -EINVAL if 'apn' is null.
-             * @return -ENODEV if the device is not responsive.
-             * @return -ENETUNREACH if the network is not available.
-             * @return -EALREADY if authentication is already in progress.
-             * @return -EBUSY if the socket is open.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int authenticate(
-                const char *apn,
-                const char *user=nullptr,
-                const char *pwd=nullptr);
-
-            /**
-             * @brief Open a TCP socket.
-             *
-             * Must be in State::ready, transitions to State::open.
-             *
-             * @param [in] host server ip address.
-             * @param [in] host_size length of 'host'.
-             * @param [in] port server port number.
-             * @return -EINVAL if 'host' is null.
-             * @return -ENODEV if the device is not responsive.
-             * @return -ENETUNREACH if the network is not available.
-             * @return -ENOTCONN if GPRS is not connected.
-             * @return -EALREADY if handshaking is already in progress.
-             * @return -EADDRINUSE if a socket is already open.
-             * @return -EBUSY disconnecting previous socket - try again.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int connect(
-                const void *host, int host_size, int port);
+            int authenticate(const char *user=nullptr, const char *pwd=nullptr);
 
             /**
              * @brief Open a TCP socket.
@@ -417,6 +374,12 @@ namespace gsm
             inline State status()
             {
                 return device_state_;
+            }
+
+            /** Returns true if the modem is responsive. */
+            inline bool detected()
+            {
+                return device_state_ > State::probe;
             }
 
             /** Returns true if the modem is registered on the network. */
@@ -581,6 +544,9 @@ namespace gsm
 
             /** Mode for AT+CNMP. */
             int mode_ = 0;
+
+            /** Access point name. */
+            char apn_[64];
 
             /** User function to call on state change event. */
             void (*state_cb_)(State state, void *user) = nullptr;

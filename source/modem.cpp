@@ -9,12 +9,12 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <string.h>
+#include <cstring>
+#include <cstdarg>
 #include <errno.h>
-#include <modem.h>
-#include <stdarg.h>
 
 #include "debug.h"
+#include "modem.h"
 
 /** How often to poll the modem (ms). */
 static constexpr int kPollingInterval = 20;
@@ -51,6 +51,49 @@ namespace gsm
         }
     }
 
+    void Modem::set_state_callback(
+        void (*func)(State state, void *user), void *user)
+    {
+        state_cb_ = func;
+        state_cb_user_ = user;
+    }
+
+    void Modem::set_event_callback(
+        void (*func)(Event event, void *user), void *user)
+    {
+        event_cb_ = func;
+        event_cb_user_ = user;
+    }
+
+    int Modem::configure(const char *apn)
+    {
+        switch(device_state_) {
+            case State::reset:
+            case State::probe:
+                return -ENODEV;
+            default:
+                break;
+        }
+
+        if(apn == nullptr || strlen(apn) >= sizeof(apn_))
+            return -EINVAL;
+
+        sprintf(apn_, "%s", apn);
+
+        // AT+CGDCONT=1,"IP",[apn] - Define PDP context
+        Command *cmd = Command::create(kDefaultTimeout,
+            "AT+CGDCONT=1,\"IP\",\"%s\"\r", apn_);
+
+        if(cmd == nullptr)
+            return -ENOMEM;
+
+        int result = push_command(cmd);
+        if(result)
+            delete cmd;
+
+        return result;
+    }
+
     void Modem::process(int delta_us)
     {
         elapsed_us_ += delta_us;
@@ -70,7 +113,10 @@ namespace gsm
 
             // Parse response
             if(response_size_ > last_size) {
-                if(device_state_ == State::probe) {
+                if(device_state_ == State::reset) {
+                    // Wait for timeout
+                }
+                else if(device_state_ == State::probe) {
                     process_probe();
                 }
                 else if(connected()) {
@@ -142,13 +188,12 @@ namespace gsm
 
         memset(ip_address_, '\0', sizeof(ip_address_));
 
+        device_state_ = State::probe;
         sock_state_ = SocketState::idle;
         rx_buffer_ = nullptr;
         tx_buffer_ = nullptr;
         rx_available_ = 0;
         tx_available_ = 0;
-
-        set_state(State::probe);
     }
 
     int Modem::disable()
@@ -166,6 +211,7 @@ namespace gsm
             return result;
         }
 
+        LOG_INFO("Powering off modem...\n");
         set_state(State::offline);
         return 0;
     }
@@ -185,18 +231,19 @@ namespace gsm
             return result;
         }
 
-        set_state(State::probe);
+        LOG_INFO("Resetting modem...\n");
+        set_state(State::reset);
         return 0;
     }
 
-    int Modem::unlock(const void *pin, int pin_size)
+    int Modem::unlock(const char *pin)
     {
         if(pin == nullptr)
             return -EINVAL;
 
         // AT+CPIN=[pin] - enter pin
         Command *cmd = Command::create(kDefaultTimeout,
-            "AT+CPIN=\"%.*s\"\r", pin_size, static_cast<const char*>(pin));
+            "AT+CPIN=\"%s\"\r", pin);
 
         if(cmd == nullptr)
             return -ENOMEM;
@@ -208,19 +255,20 @@ namespace gsm
         return result;
     }
 
-    int Modem::authenticate(
-        const void *apn,
-        int apn_size,
-        const void *user,
-        int user_size,
-        const void *pwd,
-        int pwd_size)
+    int Modem::authenticate(const char *user, const char *pwd)
     {
-        if(apn == nullptr || apn_size == 0)
+        if(apn_[0] == '\0')
             return -EINVAL;
+
+        if(user == nullptr)
+            user = "";
+
+        if(pwd == nullptr)
+            pwd = "";
 
         switch(device_state_) {
             // Invalid state, return error
+            case State::reset:
             case State::probe:
                 return -ENODEV;
             case State::init:
@@ -248,10 +296,7 @@ namespace gsm
         // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
         Command *cmd = Command::create(65000,
             "AT+CIPSHUT;+CIPMUX=0;+CIPRXGET=1;+CIPQSEND=1;"
-            "+CSTT=\"%.*s\",\"%.*s\",\"%.*s\"\r",
-            apn_size, static_cast<const char *>(apn),
-            user_size, static_cast<const char *>(user),
-            pwd_size, static_cast<const char *>(pwd));
+            "+CSTT=\"%s\",\"%s\",\"%s\"\r", apn_, user, pwd);
 
         if(cmd == nullptr)
             return -ENOMEM;
@@ -264,6 +309,7 @@ namespace gsm
 
         // AT+CIICR - activate data connection
         cmd = Command::create(85000, "AT+CIICR\r");
+
         if(cmd == nullptr)
             return -ENOMEM;
 
@@ -278,22 +324,14 @@ namespace gsm
         return 0;
     }
 
-    int Modem::authenticate(
-        const char *apn, const char *user, const char *pwd)
+    int Modem::connect(const char *host, int port)
     {
-        return authenticate(
-            apn, (apn) ? strlen(apn) : 0,
-            user, (user) ? strlen(user) : 0,
-            pwd, (pwd) ? strlen(pwd) : 0);
-    }
-
-    int Modem::connect(const void *host, int host_size, int port)
-    {
-        if(host == nullptr || host_size == 0)
+        if(host == nullptr)
             return -EINVAL;
 
         switch(device_state_) {
             // Invalid state, return error
+            case State::reset:
             case State::probe:
                 return -ENODEV;
             case State::init:
@@ -318,8 +356,7 @@ namespace gsm
 
         // AT+CIPSTART=[mode],[host],[port] - start a new connection
         Command *cmd = Command::create(75000,
-            "AT+CIPSTART=\"TCP\",\"%.*s\",%d\r",
-            host_size, static_cast<const char*>(host), port);
+            "AT+CIPSTART=\"TCP\",\"%s\",%d\r", host, port);
 
         if(cmd == nullptr)
             return -ENOMEM;
@@ -335,15 +372,11 @@ namespace gsm
         return 0;
     }
 
-    int Modem::connect(const char *host, int port)
-    {
-        return connect(host, (host) ? strlen(host) : 0, port);
-    }
-
     int Modem::disconnect()
     {
         switch(device_state_) {
             // Invalid state, return error
+            case State::reset:
             case State::probe:
                 return -ENODEV;
             case State::init:
@@ -387,10 +420,9 @@ namespace gsm
 
     void Modem::stop_receive()
     {
+        receive(nullptr, 0);
         if(event_cb_ && rx_busy())
             event_cb_(Event::rx_stopped, event_cb_user_);
-
-        receive(nullptr, 0);
     }
 
     void Modem::send(const void *data, int size)
@@ -402,10 +434,9 @@ namespace gsm
 
     void Modem::stop_send()
     {
+        send(nullptr, 0);
         if(event_cb_ && tx_busy())
             event_cb_(Event::tx_stopped, event_cb_user_);
-
-        send(nullptr, 0);
     }
 
     void Modem::set_state(State state)
@@ -413,12 +444,13 @@ namespace gsm
         if(state == device_state_)
             return;
 
+        // Refresh update timer
+        update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
+
+        // Change state
         device_state_ = state;
         if(state_cb_)
             state_cb_(device_state_, state_cb_user_);
-
-        // Refresh update timer
-        update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
     }
 
     void Modem::free_pending()
@@ -467,6 +499,9 @@ namespace gsm
         Command *cmd = nullptr;
 
         switch(device_state_) {
+            case State::reset:
+                set_state(State::probe);
+                __attribute__ ((fallthrough));
             case State::probe:
                 cmd = Command::create(1000, "AT\r");
                 break;
@@ -572,20 +607,24 @@ namespace gsm
 
     void Modem::process_timeout()
     {
+        free_pending();
+
         switch(device_state_) {
+            case State::reset:
+            case State::probe:
+                // Ignore
+                break;
             case State::authenticating:
                 LOG_WARN("Authentication timeout.\n");
+                set_state(State::searching);
                 if(event_cb_)
                     event_cb_(Event::auth_error, event_cb_user_);
-
-                set_state(State::searching);
                 break;
             case State::handshaking:
                 LOG_WARN("TCP connection timeout.\n");
+                set_state(State::ready);
                 if(event_cb_)
                     event_cb_(Event::conn_error, event_cb_user_);
-
-                set_state(State::ready);
                 break;
             case State::open:
                 LOG_WARN("Socket timeout\n");
@@ -606,8 +645,6 @@ namespace gsm
                     event_cb_(Event::timeout, event_cb_user_);
                 break;
         }
-
-        free_pending();
     }
 
     void Modem::process_probe()
@@ -625,7 +662,7 @@ namespace gsm
             return;
 
         if(push_command(cmd) != 0) {
-            delete  cmd;
+            delete cmd;
             return;
         }
 
@@ -766,18 +803,18 @@ namespace gsm
          * Clear any pending 'OK' responses. We know that the authentication
          * is successful once we get an IP address from AT+CIFSR.
          */
-        if(memstr(response_, "\r\nOK\r\n", response_size_)) {
+        if(memstr(response_, "\r\nOK\r\n", response_size_)
+            || memstr(response_, "\r\nSHUT OK\r\n", response_size_)) {
             free_pending();
             return;
         }
 
         if(memstr(response_, "\r\nERROR\r\n", response_size_)) {
             LOG_INFO("Authentication error\n");
+            set_state(State::registered);
+            free_pending();
             if(event_cb_)
                 event_cb_(Event::auth_error, event_cb_user_);
-
-            set_state(State::searching);
-            free_pending();
             return;
         }
 
@@ -840,10 +877,9 @@ namespace gsm
                 else if(memstr(start, "CONNECT FAIL", length)) {
                     LOG_WARN("TCP connection failed\n");
                     set_state(State::ready);
+                    free_pending();
                     if(event_cb_)
                         event_cb_(Event::conn_error, event_cb_user_);
-
-                    free_pending();
                     break;
                 }
             }
@@ -1012,11 +1048,10 @@ namespace gsm
     {
         if(memstr(response_, "ERROR", response_size_)) {
             LOG_ERROR("Error during receive\n");
+            sock_state_ = SocketState::idle;
             free_pending();
             if(event_cb_)
                 event_cb_(Event::rx_error, event_cb_user_);
-
-            sock_state_ = SocketState::idle;
             return;
         }
 
@@ -1073,11 +1108,10 @@ namespace gsm
     {
         if(memstr(response_, "ERROR", response_size_)) {
             LOG_ERROR("Staging error\n");
+            sock_state_ = SocketState::idle;
             free_pending();
             if(event_cb_)
                 event_cb_(Event::tx_error, event_cb_user_);
-
-            sock_state_ = SocketState::idle;
             return;
         }
 
@@ -1122,22 +1156,20 @@ namespace gsm
     {
         if(memstr(response_, "CLOSED", response_size_)) {
             LOG_ERROR("TCP socket disconnected\n");
+            sock_state_ = SocketState::idle;
+            set_state(State::ready);
             free_pending();
             if(event_cb_)
                 event_cb_(Event::tx_error, event_cb_user_);
-
-            sock_state_ = SocketState::idle;
-            set_state(State::ready);
             return;
         }
 
         if(memstr(response_, "ERROR", response_size_)) {
             LOG_ERROR("Send error\n");
+            sock_state_ = SocketState::idle;
             free_pending();
             if(event_cb_)
                 event_cb_(Event::tx_error, event_cb_user_);
-
-            sock_state_ = SocketState::idle;
             return;
         }
 
@@ -1161,12 +1193,12 @@ namespace gsm
                 LOG_INFO("Sent %d bytes (%d)\n",
                     count, tx_size_ - tx_count_ - count);
 
+                sock_state_ = SocketState::idle;
+                free_pending();
+
                 tx_count_ += count;
                 if(tx_count_ == tx_size_ && event_cb_)
                     event_cb_(Event::tx_complete, event_cb_user_);
-
-                sock_state_ = SocketState::idle;
-                free_pending();
             }
         }
     }
