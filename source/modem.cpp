@@ -46,7 +46,7 @@ namespace gsm
     {
         // Free command queue
         while(cmd_buffer_.size() > 0) {
-            free(cmd_buffer_.front());
+            delete cmd_buffer_.front();
             cmd_buffer_.pop_front();
         }
     }
@@ -102,14 +102,10 @@ namespace gsm
             const int last_size = response_size_;
 
             // Command pending - wait for response
-            #if defined(NOVAGSM_ASYNC)
-            response_size_ = ctx_->rx_count_async();
-            #else
             uint8_t *p_data = &response_[response_size_];
             int count = ctx_->read(p_data, (kBufferSize - response_size_));
             if(count > 0)
                 response_size_ += count;
-            #endif
 
             // Parse response
             if(response_size_ > last_size) {
@@ -135,23 +131,16 @@ namespace gsm
                     process_general();
                 }
             }
-
-            // Handle timeout
-            if(pending_ && (int)(elapsed_us_ - command_timer_) > 0)
+            else if((int)(elapsed_us_ - command_timer_) > 0) {
                 process_timeout();
+            }
         }
         else if(cmd_buffer_.size() > 0) {
             pending_ = cmd_buffer_.front();
             cmd_buffer_.pop_front();
 
             // Send queued command
-            #if defined(NOVAGSM_ASYNC)
-                ctx_->rx_abort_async();
-                ctx_->receive_async(response_, kBufferSize);
-                ctx_->send_async(front->data, front->size);
-            #else
-                ctx_->write(pending_->data(), pending_->size());
-            #endif
+            ctx_->write(pending_->data(), pending_->size());
 
             command_timer_ = elapsed_us_ + (pending_->timeout() * 1000);
             response_size_ = 0;
@@ -167,16 +156,10 @@ namespace gsm
     {
         stop_send();
         stop_receive();
-
-        if(pending_) {
-            #if defined(NOVAGSM_ASYNC)
-            ctx_->rx_abort_async();
-            #endif
-            free_pending();
-        }
+        free_pending();
 
         while(cmd_buffer_.size() > 0) {
-            free(cmd_buffer_.front());
+            delete cmd_buffer_.front();
             cmd_buffer_.pop_front();
         }
 
@@ -547,7 +530,7 @@ namespace gsm
 
         int result = push_command(cmd);
         if(result)
-            delete  cmd;
+            delete cmd;
 
         return result;
     }
@@ -1113,6 +1096,7 @@ namespace gsm
             free_pending();
             if(event_cb_)
                 event_cb_(Event::tx_error, event_cb_user_);
+
             return;
         }
 
@@ -1122,29 +1106,21 @@ namespace gsm
         if(tx_buffer_) {
             // Send data
             const uint8_t *buffer = tx_buffer_ + tx_count_;
-            #if defined(GSM_ASYNC)
-            ctx_->send_async(buffer, tx_pending_);
-            #else
             ctx_->write(buffer, tx_pending_);
-            #endif
 
             LOG_VERBOSE("CTS %d bytes (%d)\n",
                 tx_pending_, (tx_size_ - tx_count_));
         }
         else {
             /*
-                * The send was canceled, but the modem is still
-                * expecting data. Send zeroes until the buffer is
-                * full.
-                */
+             * The send was canceled, but the modem is still
+             * expecting data. Send zeroes until the buffer is
+             * full.
+             */
             uint8_t *buffer = static_cast<uint8_t*>(malloc(kBufferSize));
             memset(buffer, '\0', kBufferSize);
 
-            #if defined(GSM_ASYNC)
-            ctx_->send_async(buffer, tx_pending_);
-            #else
             ctx_->write(buffer, tx_pending_);
-            #endif
 
             free(buffer);
         }
@@ -1206,7 +1182,7 @@ namespace gsm
 
     Modem::Command::~Command()
     {
-        if(data_)
+        if(data_ != nullptr)
             free(data_);
     }
 

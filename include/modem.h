@@ -46,80 +46,34 @@ namespace gsm
     /**
      * @brief Defines resources and callbacks used by the driver.
      *
-     * The user has two API options: common and asynchronous.
-     *
-     * The common API expects a *non-blocking* buffered
+     * The API expects a *non-blocking* buffered
      * implementation, e.g. unistd or Arduino.
      *
      *   https://linux.die.net/man/2/read
      *   https://linux.die.net/man/2/write
-     *
-     * The asynchronous API expects a raw hardware implementation
-     * where the buffer must stay allocated during the operation,
-     * e.g. CMSIS USART drivers.
-     *
-     * https://www.keil.com/pack/doc/CMSIS/Driver/html/group__usart__interface__gr.html
-     *
-     * To use the common API provide callbacks for:
-     *  1. read
-     *  2. write
-     *
-     * To use the asynchronous API define GSM_ASYNC and provide callbacks for:
-     *  1. receive_async
-     *  2. send_async
-     *  3. rx_count_async
-     *  4. rx_abort_async
      */
     typedef struct {
-        #if defined(NOVAGSM_ASYNC)
-            /**
-             * @brief Asynchronous receive.
-             *
-             * Receive 'size' bytes into 'data' from device.
-             *
-             * @param [out] data buffer to receive into.
-             * @param [in] size number of bytes to receive.
-             */
-            int (*receive_async)(void *data, int size);
+        /**
+         * @brief Common read.
+         *
+         * Read 'size' bytes into 'data' from stream.
+         *
+         * @param [out] data buffer to read into.
+         * @param [in] size number of bytes to read.
+         * @return number of bytes read.
+         */
+        int (*read)(void *data, int size);
 
-            /**
-             * @brief Asynchronous send.
-             *
-             * Asynchronously send 'size' bytes from 'data' to device.
-             *
-             * @param [in] data buffer to send.
-             * @param [in] size number of bytes to send.
-             */
-            int (*send_async)(const void *data, int size);
-
-            /** Return the number of bytes received during receive_async(). */
-            int (*rx_count_async)();
-
-            /** Abort an ongoing asynchronous receive operation. */
-            void (*rx_abort_async)();
-        #else
-            /**
-             * @brief Common read.
-             *
-             * Read 'size' bytes into 'data' from stream.
-             *
-             * @param [out] data buffer to read into.
-             * @param [in] size number of bytes to read.
-             * @return number of bytes read.
-             */
-            int (*read)(void *data, int size);
-
-            /**
-             * @brief Common write.
-             *
-             * Write 'size' bytes from 'data' to stream.
-             *
-             * @param [in] data buffer to write.
-             * @param [in] size number of bytes to write.
-             * @return number of bytes written.
-             */
-            int (*write)(const void *data, int size);
-        #endif
+        /**
+         * @brief Common write.
+         *
+         * Write 'size' bytes from 'data' to stream.
+         *
+         * @param [in] data buffer to write.
+         * @param [in] size number of bytes to write.
+         * @return number of bytes written.
+         */
+        int (*write)(const void *data, int size);
     } context_t;
 
     /**
@@ -678,7 +632,7 @@ namespace gsm
 
             int timeout_ = 0;           /**< Response timeout. */
             int size_ = 0;              /**< Size of payload. */
-            uint8_t *data_;             /**< Payload buffer. */
+            uint8_t *data_ = nullptr;   /**< Payload buffer. */
     };
 }
 
