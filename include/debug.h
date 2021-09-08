@@ -8,7 +8,7 @@
 #ifndef NOVAGSM_DEBUG_H_
 #define NOVAGSM_DEBUG_H_
 
-#ifdef NOVAGSM_DEBUG
+#if NOVAGSM_DEBUG
 void gsm_debug_print(int level, const char *file, int line, const char *format, ...);
 #endif
 

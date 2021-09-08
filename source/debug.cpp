@@ -9,7 +9,7 @@
 #include <stdarg.h>
 #include "debug.h"
 
-#ifdef NOVAGSM_DEBUG
+#if NOVAGSM_DEBUG
 
 /**
  * @brief User defined function to print debug strings.
