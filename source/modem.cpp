@@ -173,8 +173,6 @@ namespace gsm
 
         device_state_ = State::probe;
         sock_state_ = SocketState::idle;
-        rx_buffer_ = nullptr;
-        tx_buffer_ = nullptr;
         rx_available_ = 0;
         tx_available_ = 0;
     }
@@ -403,9 +401,10 @@ namespace gsm
 
     void Modem::stop_receive()
     {
-        receive(nullptr, 0);
         if(event_cb_ && rx_busy())
             event_cb_(Event::rx_stopped, event_cb_user_);
+
+        receive(nullptr, 0);
     }
 
     void Modem::send(const void *data, int size)
@@ -417,9 +416,10 @@ namespace gsm
 
     void Modem::stop_send()
     {
-        send(nullptr, 0);
         if(event_cb_ && tx_busy())
             event_cb_(Event::tx_stopped, event_cb_user_);
+
+        send(nullptr, 0);
     }
 
     void Modem::set_state(State state)
@@ -537,7 +537,11 @@ namespace gsm
 
     int Modem::socket_receive(int count)
     {
-        if(count == 0)
+        const int available = std::min(rx_available_, kSocketMax);
+        if(count > available)
+            count = available;
+
+        if(count <= 0)
             return 0;
 
         if(sock_state_ != SocketState::idle)
@@ -563,7 +567,11 @@ namespace gsm
 
     int Modem::socket_send(int count)
     {
-        if(count == 0)
+        const int available = std::min(tx_available_, kSocketMax);
+        if(count > available)
+            count = available;
+
+        if(count <= 0)
             return 0;
 
         if(sock_state_ != SocketState::idle)
@@ -962,20 +970,17 @@ namespace gsm
                     break;
                 }
                 else if(memstr(start, "CONNECT OK", length)) {
-                    if(rx_buffer_ && rx_available_) {
-                        const int requested = (rx_size_ - rx_count_);
-                        const int available = std::min(
-                            rx_available_, kSocketMax);
+                    const int tx_requested = (tx_buffer_)
+                        ? (tx_size_ - tx_count_) : 0;
 
-                        socket_receive(std::min(requested, available));
+                    const int rx_requested = (rx_buffer_)
+                        ? (rx_size_ - rx_count_) : 0;
+
+                    if(tx_requested && tx_available_) {
+                        socket_send(tx_requested);
                     }
-
-                    if(tx_buffer_ && tx_available_) {
-                        const int requested = (tx_size_ - tx_count_);
-                        const int available = std::min(
-                            tx_available_, kSocketMax);
-
-                        socket_send(std::min(requested, available));
+                    else if(rx_requested && rx_available_) {
+                        socket_receive(rx_requested);
                     }
 
                     free_pending();
@@ -1036,6 +1041,7 @@ namespace gsm
             free_pending();
             if(event_cb_)
                 event_cb_(Event::rx_error, event_cb_user_);
+
             return;
         }
 
@@ -1079,7 +1085,7 @@ namespace gsm
                 memcpy(destination, static_cast<uint8_t*>(data)+1, count);
 
                 rx_count_ += count;
-                if(rx_count_ == rx_size_ && event_cb_)
+                if(rx_count_ >= rx_size_ && event_cb_)
                     event_cb_(Event::rx_complete, event_cb_user_);
             }
 
@@ -1170,12 +1176,12 @@ namespace gsm
                 LOG_INFO("Sent %d bytes (%d)\n",
                     count, tx_size_ - tx_count_ - count);
 
+                tx_count_ += count;
+                if(tx_count_ >= tx_size_ && event_cb_)
+                    event_cb_(Event::tx_complete, event_cb_user_);
+
                 sock_state_ = SocketState::idle;
                 free_pending();
-
-                tx_count_ += count;
-                if(tx_count_ == tx_size_ && event_cb_)
-                    event_cb_(Event::tx_complete, event_cb_user_);
             }
         }
     }
