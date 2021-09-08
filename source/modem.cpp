@@ -65,6 +65,13 @@ namespace gsm
         event_cb_user_ = user;
     }
 
+    void Modem::set_error_callback(
+        void (*func)(int error, void *user), void *user)
+    {
+        error_cb_ = func;
+        error_cb_user_ = user;
+    }
+
     int Modem::configure(const char *apn)
     {
         switch(device_state_) {
@@ -454,6 +461,14 @@ namespace gsm
         if(memstr(response_, "\r\nERROR\r\n", response_size_))
             return true;
 
+        // Find CME errors
+        void *cme = memstr(response_, "+CME ERROR:", response_size_);
+        if(cme != nullptr) {
+            int length = (static_cast<uint8_t*>(cme) - response_) + 2;
+            if(memchr(cme, '\n', length))
+                return true;
+        }
+
         return false;
     }
 
@@ -649,7 +664,7 @@ namespace gsm
 
         // ATE0 - disable echo
         // AT+CNMP - preferred mode selection
-        Command *cmd = Command::create(1000, "ATE0;+CNMP=%d\r", mode_);
+        Command *cmd = Command::create(1000, "ATE0;+CNMP=%d;+CMEE=1\r", mode_);
         if(cmd == nullptr)
             return;
 
@@ -766,6 +781,20 @@ namespace gsm
                         LOG_INFO("Modem offline\n");
                         set_state(State::offline);
                     }
+                }
+                else if(memstr(start, "+CME ERROR:", length)) {
+                    void *data = memchr(start, ':', length);
+
+                    // +CME ERROR: %d\r\n
+                    // │         │
+                    // │         └ data
+                    // └ start
+
+                    const int error = strtol(
+                        static_cast<char*>(data)+1, nullptr, 10);
+
+                    if(error_cb_)
+                        error_cb_(error, error_cb_user_);
                 }
             }
 

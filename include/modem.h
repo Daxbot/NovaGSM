@@ -143,6 +143,14 @@ namespace gsm
                 void (*func)(Event event, void *user), void *user=nullptr);
 
             /**
+             * @brief Set a function to be called on a modem error (+CME ERROR).
+             * @param [in] func function to be called.
+             * @param [in] user pointer to be passed when 'func' is called.
+             */
+            void set_error_callback(
+                void (*func)(int error, void *user), void *user=nullptr);
+
+            /**
              * @brief Handle communication with the modem.
              *
              * The process method handles communication with the modem and
@@ -508,11 +516,17 @@ namespace gsm
             /** User private data for state change callback. */
             void *state_cb_user_ = nullptr;
 
-            /** User function to call on socket event. */
+            /** User function to call on event. */
             void (*event_cb_)(Event event, void *user) = nullptr;
 
-            /** User private data for socket callback. */
+            /** User private data for event callback. */
             void *event_cb_user_ = nullptr;
+
+            /** User function to call on +CME ERROR. */
+            void (*error_cb_)(int error, void *user) = nullptr;
+
+            /** User private data for error callback. */
+            void *error_cb_user_ = nullptr;
 
             /** Signal value reported by AT+CSQ. */
             int signal_ = 99;
