@@ -802,7 +802,18 @@ namespace gsm
             size -= length;
         }
 
-        if(signal_ != 99 && service_ && (creg_ == 1 || creg_ == 5)) {
+        bool reg = false;
+
+        if(creg_ == 1 || creg_ == 5)
+            reg = true;  // GSM (2G)
+
+        if(cgreg_ == 1 || cgreg_ == 5)
+            reg = true;  // GPRS (2G/3G)
+
+        if(cereg_ == 1 || cereg_ == 5)
+            reg = true; // EPS (3G/LTE)
+
+        if(signal_ != 99 && service_ && reg) {
             if(device_state_ < State::registered) {
                 LOG_INFO("Registered\n");
                 set_state(State::registered);
