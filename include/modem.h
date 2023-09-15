@@ -306,7 +306,7 @@ namespace gsm
              */
             inline bool rx_busy()
             {
-                return rx_buffer_ && rx_count_ < rx_size_;
+                return connected() && rx_buffer_ && rx_count_ < rx_size_;
             }
 
             /**
@@ -315,7 +315,7 @@ namespace gsm
              */
             inline bool tx_busy()
             {
-                return tx_buffer_ && tx_count_ < tx_size_;
+                return connected() && tx_buffer_ && tx_count_ < tx_size_;
             }
 
             /**
