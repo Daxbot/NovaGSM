@@ -82,14 +82,12 @@ namespace gsm
                 break;
         }
 
-        if(apn == nullptr || strlen(apn) >= sizeof(apn_))
+        if(apn == nullptr)
             return -EINVAL;
-
-        sprintf(apn_, "%s", apn);
 
         // AT+CGDCONT=1,"IP",[apn] - Define PDP context
         Command *cmd = Command::create(kDefaultTimeout,
-            "AT+CGDCONT=1,\"IP\",\"%s\"\r", apn_);
+            "AT+CGDCONT=1,\"IP\",\"%s\"\r", apn);
 
         if(cmd == nullptr)
             return -ENOMEM;
@@ -243,9 +241,9 @@ namespace gsm
         return result;
     }
 
-    int Modem::authenticate(const char *user, const char *pwd)
+    int Modem::authenticate(const char *apn, const char *user, const char *pwd)
     {
-        if(apn_[0] == '\0')
+        if(apn == nullptr)
             return -EINVAL;
 
         if(user == nullptr)
@@ -284,7 +282,7 @@ namespace gsm
         // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
         Command *cmd = Command::create(65000,
             "AT+CIPSHUT;+CIPMUX=0;+CIPRXGET=1;+CIPQSEND=1;"
-            "+CSTT=\"%s\",\"%s\",\"%s\"\r", apn_, user, pwd);
+            "+CSTT=\"%s\",\"%s\",\"%s\"\r", apn, user, pwd);
 
         if(cmd == nullptr)
             return -ENOMEM;

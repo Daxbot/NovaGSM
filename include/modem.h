@@ -203,6 +203,7 @@ namespace gsm
             /**
              * @brief Connect to GPRS.
              *
+             * @param [in] apn access point name.
              * @param [in] user access point user name.
              * @param [in] pwd access point password.
              * @return -EINVAL if the GPRS context has not been configured.
@@ -213,7 +214,10 @@ namespace gsm
              * @return -ENOMEM if memory allocation failed.
              * @return -EMSGSIZE if buffer size exceeded.
              */
-            int authenticate(const char *user=nullptr, const char *pwd=nullptr);
+            int authenticate(
+                    const char *apn,
+                    const char *user = nullptr,
+                    const char *pwd = nullptr);
 
             /**
              * @brief Open a TCP socket.
@@ -506,9 +510,6 @@ namespace gsm
 
             /** Mode for AT+CNMP. */
             int mode_ = 0;
-
-            /** Access point name. */
-            char apn_[64];
 
             /** User function to call on state change event. */
             void (*state_cb_)(State state, void *user) = nullptr;
