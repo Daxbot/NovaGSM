@@ -429,6 +429,9 @@ namespace gsm
              */
             void set_state(State state);
 
+            /** Emit an event. */
+            void emit_event(Event event);
+
             /** Free the pending command. */
             void free_pending();
 

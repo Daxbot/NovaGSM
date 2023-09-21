@@ -406,10 +406,10 @@ namespace gsm
 
     void Modem::stop_receive()
     {
-        if(event_cb_ && rx_busy())
-            event_cb_(Event::rx_stopped, event_cb_user_);
-
+        const bool stopped = rx_busy();
         receive(nullptr, 0);
+        if(stopped)
+            emit_event(Event::rx_stopped);
     }
 
     void Modem::send(const void *data, int size)
@@ -421,10 +421,10 @@ namespace gsm
 
     void Modem::stop_send()
     {
-        if(event_cb_ && tx_busy())
-            event_cb_(Event::tx_stopped, event_cb_user_);
-
+        const bool stopped = tx_busy();
         send(nullptr, 0);
+        if(stopped)
+            emit_event(Event::tx_stopped);
     }
 
     void Modem::set_state(State state)
@@ -439,6 +439,12 @@ namespace gsm
         device_state_ = state;
         if(state_cb_)
             state_cb_(device_state_, state_cb_user_);
+    }
+
+    void Modem::emit_event(Event event)
+    {
+        if(event_cb_)
+            event_cb_(event, event_cb_user_);
     }
 
     void Modem::free_pending()
@@ -622,23 +628,19 @@ namespace gsm
             case State::authenticating:
                 LOG_WARN("Authentication timeout.\n");
                 set_state(State::searching);
-                if(event_cb_)
-                    event_cb_(Event::auth_error, event_cb_user_);
+                emit_event(Event::auth_error);
                 break;
             case State::handshaking:
                 LOG_WARN("TCP connection timeout.\n");
                 set_state(State::ready);
-                if(event_cb_)
-                    event_cb_(Event::conn_error, event_cb_user_);
+                emit_event(Event::conn_error);
                 break;
             case State::open:
                 LOG_WARN("Socket timeout\n");
-                if(event_cb_) {
-                    if(sock_state_ == SocketState::cts)
-                        event_cb_(Event::tx_error, event_cb_user_);
-                    else if(sock_state_ == SocketState::rtr)
-                        event_cb_(Event::rx_error, event_cb_user_);
-                }
+                if(sock_state_ == SocketState::cts)
+                    emit_event(Event::tx_error);
+                else if(sock_state_ == SocketState::rtr)
+                    emit_event(Event::rx_error);
                 break;
             case State::closing:
                 LOG_WARN("Close timeout\n");
@@ -646,8 +648,7 @@ namespace gsm
                 break;
             default:
                 LOG_WARN("Command timeout\n");
-                if(event_cb_)
-                    event_cb_(Event::timeout, event_cb_user_);
+                emit_event(Event::timeout);
                 break;
         }
     }
@@ -843,8 +844,7 @@ namespace gsm
             LOG_INFO("Authentication error\n");
             set_state(State::registered);
             free_pending();
-            if(event_cb_)
-                event_cb_(Event::auth_error, event_cb_user_);
+            emit_event(Event::auth_error);
             return;
         }
 
@@ -908,8 +908,7 @@ namespace gsm
                     LOG_WARN("TCP connection failed\n");
                     set_state(State::ready);
                     free_pending();
-                    if(event_cb_)
-                        event_cb_(Event::conn_error, event_cb_user_);
+                    emit_event(Event::conn_error);
                     break;
                 }
             }
@@ -1034,8 +1033,8 @@ namespace gsm
                     const int count = strtol(
                         static_cast<char*>(data)+1, nullptr, 10);
 
-                    if(count > rx_available_ && event_cb_)
-                        event_cb_(Event::new_data, event_cb_user_);
+                    if(count > rx_available_)
+                        emit_event(Event::new_data);
 
                     rx_available_ = count;
                 }
@@ -1077,9 +1076,7 @@ namespace gsm
             LOG_ERROR("Error during receive\n");
             sock_state_ = SocketState::idle;
             free_pending();
-            if(event_cb_)
-                event_cb_(Event::rx_error, event_cb_user_);
-
+            emit_event(Event::rx_error);
             return;
         }
 
@@ -1123,8 +1120,8 @@ namespace gsm
                 memcpy(destination, static_cast<uint8_t*>(data)+1, count);
 
                 rx_count_ += count;
-                if(rx_count_ >= rx_size_ && event_cb_)
-                    event_cb_(Event::rx_complete, event_cb_user_);
+                if(rx_count_ >= rx_size_)
+                    emit_event(Event::rx_complete);
             }
 
             sock_state_ = SocketState::idle;
@@ -1138,9 +1135,7 @@ namespace gsm
             LOG_ERROR("Staging error\n");
             sock_state_ = SocketState::idle;
             free_pending();
-            if(event_cb_)
-                event_cb_(Event::tx_error, event_cb_user_);
-
+            emit_event(Event::tx_error);
             return;
         }
 
@@ -1180,8 +1175,7 @@ namespace gsm
             sock_state_ = SocketState::idle;
             set_state(State::ready);
             free_pending();
-            if(event_cb_)
-                event_cb_(Event::tx_error, event_cb_user_);
+            emit_event(Event::tx_error);
             return;
         }
 
@@ -1189,8 +1183,7 @@ namespace gsm
             LOG_ERROR("Send error\n");
             sock_state_ = SocketState::idle;
             free_pending();
-            if(event_cb_)
-                event_cb_(Event::tx_error, event_cb_user_);
+            emit_event(Event::tx_error);
             return;
         }
 
@@ -1215,8 +1208,8 @@ namespace gsm
                     count, tx_size_ - tx_count_ - count);
 
                 tx_count_ += count;
-                if(tx_count_ >= tx_size_ && event_cb_)
-                    event_cb_(Event::tx_complete, event_cb_user_);
+                if(tx_count_ >= tx_size_)
+                emit_event(Event::tx_complete);
 
                 sock_state_ = SocketState::idle;
                 free_pending();
