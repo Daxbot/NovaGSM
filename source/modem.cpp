@@ -625,13 +625,18 @@ namespace gsm
             case State::probe:
                 // Ignore
                 break;
+            case State::init:
+                LOG_WARN("Init timeout\n");
+                set_state(State::probe);
+                emit_event(Event::timeout);
+                break;
             case State::authenticating:
-                LOG_WARN("Authentication timeout.\n");
+                LOG_WARN("Authentication timeout\n");
                 set_state(State::searching);
                 emit_event(Event::auth_error);
                 break;
             case State::handshaking:
-                LOG_WARN("TCP connection timeout.\n");
+                LOG_WARN("TCP connection timeout\n");
                 set_state(State::ready);
                 emit_event(Event::conn_error);
                 break;
