@@ -568,6 +568,9 @@ namespace gsm
             /** State of the modem. */
             State device_state_ = State::probe;
 
+            /** Next state of the modem. */
+            State next_state_ = State::probe;
+
             /** State of data transmission through the socket. */
             SocketState sock_state_ = SocketState::idle;
 

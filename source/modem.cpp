@@ -103,6 +103,16 @@ namespace gsm
     {
         elapsed_us_ += delta_us;
 
+        if(next_state_ != device_state_) {
+            // Refresh the update timer
+            update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
+
+            // Trigger the state change
+            device_state_ = next_state_;
+            if(state_cb_)
+                state_cb_(device_state_, state_cb_user_);
+        }
+
         if(pending_) {
             const int last_size = response_size_;
 
@@ -177,6 +187,7 @@ namespace gsm
         memset(ip_address_, '\0', sizeof(ip_address_));
 
         device_state_ = State::probe;
+        next_state_ = State::probe;
         sock_state_ = SocketState::idle;
         rx_available_ = 0;
         tx_available_ = 0;
@@ -429,16 +440,7 @@ namespace gsm
 
     void Modem::set_state(State state)
     {
-        if(state == device_state_)
-            return;
-
-        // Refresh update timer
-        update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
-
-        // Change state
-        device_state_ = state;
-        if(state_cb_)
-            state_cb_(device_state_, state_cb_user_);
+        next_state_ = state;
     }
 
     void Modem::emit_event(Event event)
