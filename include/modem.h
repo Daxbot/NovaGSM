@@ -81,18 +81,18 @@ namespace gsm
      * @see set_state_callback().
      */
     enum class State {
-        reset,          /**< Reset pending. */
-        probe,          /**< Waiting for device. */
-        init,           /**< Modem is initializing. */
-        offline,        /**< Low power mode. */
-        locked,         /**< SIM is locked. */
-        searching,      /**< Searching for the network. */
-        registered,     /**< Network registers the modem. */
-        authenticating, /**< Attempting to establish GPRS connection. */
-        ready,          /**< Data connection active. */
-        handshaking,    /**< Attempting to establish TCP connection. */
-        open,           /**< TCP socket is open. */
-        closing,        /**< TCP socket is closing. */
+        reset,          /**< 0x0 - Reset pending. */
+        probe,          /**< 0x1 - Waiting for device. */
+        init,           /**< 0x2 - Modem is initializing. */
+        offline,        /**< 0x3 - Low power mode. */
+        locked,         /**< 0x4 - SIM is locked. */
+        searching,      /**< 0x5 - Searching for the network. */
+        registered,     /**< 0x6 - Network registers the modem. */
+        authenticating, /**< 0x7 - Attempting to establish GPRS connection. */
+        ready,          /**< 0x8 - Data connection active. */
+        handshaking,    /**< 0x9 - Attempting to establish TCP connection. */
+        open,           /**< 0xA - TCP socket is open. */
+        closing,        /**< 0xB - TCP socket is closing. */
     };
 
     /**
