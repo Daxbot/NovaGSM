@@ -191,6 +191,10 @@ namespace gsm
         sock_state_ = SocketState::idle;
         rx_available_ = 0;
         tx_available_ = 0;
+
+        // Clear queued data
+        ctx_->read(response_, kBufferSize);
+        memset(response_, 0, kBufferSize);
     }
 
     int Modem::disable()
