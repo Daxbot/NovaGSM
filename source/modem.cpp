@@ -2,7 +2,7 @@
  * @file modem.cpp
  * @brief GSM/GPRS modem driver.
  * @author Wilkins White
- * @copyright 2019-2021 Nova Dynamics LLC
+ * @copyright 2023 Nova Dynamics LLC
  */
 
 #include <cassert>
@@ -17,1240 +17,1064 @@
 #include "modem.h"
 
 /** How often to poll the modem (ms). */
-static constexpr int kPollingInterval = 20;
+static constexpr uint32_t kPollingInterval = 20;
 
-/**
- * @brief Buffer string search.
- * @param [in] data buffer to search.
- * @param [in] target string to find.
- * @param [in] size maximum bytes to search.
- */
-static void *memstr(void *data, const char *target, int size)
+/** How long to wait for a 'RDY' response before resetting the modem (ms). */
+static constexpr uint32_t kReadyTimeout = 30000;
+
+namespace gsm {
+
+Modem::Modem(context_t &context) :
+        ctx(context)
 {
-    char *p_data = static_cast<char*>(data);
-    const int len = strlen(target);
-
-    if(len <= size) {
-        for(; data != (p_data-size); p_data++) {
-            if(*p_data == target[0] && memcmp(p_data, target, len) == 0)
-                return static_cast<void*>(p_data);
-        }
-    }
-
-    return nullptr;
+    parser.set_parse_callback(parse_callback, this);
 }
 
-namespace gsm
+Modem::~Modem()
 {
-    Modem::~Modem()
-    {
-        // Free command queue
-        while(cmd_buffer_.size() > 0) {
-            delete cmd_buffer_.front();
-            cmd_buffer_.pop_front();
-        }
+    // Free command queue
+    while (cmd_buffer.size() > 0) {
+        delete cmd_buffer.front();
+        cmd_buffer.pop();
     }
+}
 
-    void Modem::set_state_callback(
+void Modem::set_state_callback(
         void (*func)(State state, void *user), void *user)
-    {
-        state_cb_ = func;
-        state_cb_user_ = user;
-    }
+{
+    state_cb = func;
+    state_cb_user = user;
+}
 
-    void Modem::set_event_callback(
+void Modem::set_event_callback(
         void (*func)(Event event, void *user), void *user)
-    {
-        event_cb_ = func;
-        event_cb_user_ = user;
-    }
+{
+    event_cb = func;
+    event_cb_user = user;
+}
 
-    void Modem::set_error_callback(
+void Modem::set_error_callback(
         void (*func)(int error, void *user), void *user)
-    {
-        error_cb_ = func;
-        error_cb_user_ = user;
+{
+    error_cb = func;
+    error_cb_user = user;
+}
+
+void Modem::process()
+{
+    if (next_state != device_state) {
+        // Refresh the update timer
+        update_timer = millis() + kPollingInterval;
+
+        // Trigger the state change
+        device_state = next_state;
+        LOG_VERBOSE("State set to %d\n", device_state);
+        emit_state(device_state);
     }
 
-    int Modem::configure(const char *apn)
-    {
-        switch(device_state_) {
-            case State::reset:
-            case State::probe:
-                return -ENODEV;
-            default:
-                break;
+    if (pending) {
+        // Command pending - wait for response
+        int count = read(buffer, kBufferSize);
+        if (count > 0) {
+            parser.load(buffer, count);
         }
+        else if ((int32_t) (millis() - command_timer) > 0) {
+            handle_timeout();
+        }
+    }
+    else if (cmd_buffer.size() > 0) {
+        pending = cmd_buffer.front();
+        cmd_buffer.pop();
 
-        if(apn == nullptr)
-            return -EINVAL;
+        // Send queued command
+        write(pending->data(), pending->size());
 
-        // AT+CGDCONT=1,"IP",[apn] - Define PDP context
-        Command *cmd = Command::create(kDefaultTimeout,
-            "AT+CGDCONT=1,\"IP\",\"%s\"\r", apn);
+        command_timer = millis() + pending->timeout();
+    }
+    else if ((int32_t) (millis() - update_timer) > 0) {
+        // Nothing queued - poll the modem
+        update_timer = millis() + kPollingInterval;
+        poll_modem();
+    }
 
-        if(cmd == nullptr)
-            return -ENOMEM;
+    if (device_state == State::reset) {
+        // We should receive 'RDY' once the modem can accept commands.
+        // If this takes too long we should try resetting it again.
+        if (reset_timer == 0)
+            reset_timer = millis() + kReadyTimeout;
+        else if ((int32_t) (millis() - reset_timer) > 0)
+            reset();
+    }
+}
 
-        int result = push_command(cmd);
-        if(result)
-            delete cmd;
+void Modem::reinit()
+{
+    // Clear any queued commands
+    while (cmd_buffer.size() > 0) {
+        delete cmd_buffer.front();
+        cmd_buffer.pop();
+    }
 
+    // Reset cached values
+    modem_csq = 99;
+    modem_cgatt = 0;
+    modem_creg = 0;
+    modem_cgreg = 0;
+    modem_cereg = 0;
+
+    memset(modem_cifsr, '\0', sizeof(modem_cifsr));
+
+    // Reset socket
+    stop_send();
+    stop_receive();
+
+    modem_rx_available = 0;
+    modem_tx_available = 0;
+
+    // Reset state
+    if (status() != State::reset)
+        set_state(State::ready);
+}
+
+int Modem::reset()
+{
+    reinit();
+
+    // AT+CFUN=1,1 - reset phone module
+    Command *cmd = new Command(1000, "+CFUN=1,1");
+    if (cmd == nullptr)
+        return -ENOMEM;
+
+    int result = push_command(cmd);
+    if (result) {
+        delete cmd;
         return result;
     }
 
-    void Modem::process(int delta_us)
-    {
-        elapsed_us_ += delta_us;
+    LOG_INFO("Resetting modem...\n");
+    set_state(State::reset);
+    reset_timer = 0;
+    return 0;
+}
 
-        if(next_state_ != device_state_) {
-            // Refresh the update timer
-            update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
+int Modem::configure(const char *apn, uint8_t mode)
+{
+    switch (next_state) {
+    // Invalid state, return error
+    case State::reset:
+        return -ENODEV;
+        // Continue
+    case State::ready:
+    case State::error:
+    case State::searching:
+    case State::authenticating:
+    case State::handshaking:
+    case State::open:
+    case State::closing:
+    case State::registered:
+    case State::online:
+        break;
 
-            // Trigger the state change
-            device_state_ = next_state_;
-            if(state_cb_)
-                state_cb_(device_state_, state_cb_user_);
-        }
-
-        if(pending_) {
-            const int last_size = response_size_;
-
-            // Command pending - wait for response
-            uint8_t *p_data = &response_[response_size_];
-            int count = ctx_->read(p_data, (kBufferSize - response_size_));
-            if(count > 0)
-                response_size_ += count;
-
-            // Parse response
-            if(response_size_ > last_size) {
-                if(device_state_ == State::reset) {
-                    // Wait for timeout
-                }
-                else if(device_state_ == State::probe) {
-                    process_probe();
-                }
-                else if(connected()) {
-                    process_socket();
-                }
-                else if(authenticating()) {
-                    process_authentication();
-                }
-                else if(handshaking()) {
-                    process_handshaking();
-                }
-                else if(closing()) {
-                    process_close();
-                }
-                else {
-                    process_general();
-                }
-            }
-            else if((int)(elapsed_us_ - command_timer_) > 0) {
-                process_timeout();
-            }
-        }
-        else if(cmd_buffer_.size() > 0) {
-            pending_ = cmd_buffer_.front();
-            cmd_buffer_.pop_front();
-
-            // Send queued command
-            ctx_->write(pending_->data(), pending_->size());
-
-            command_timer_ = elapsed_us_ + (pending_->timeout() * 1000);
-            response_size_ = 0;
-        }
-        else if(!update_timer_ || (int)(elapsed_us_ - update_timer_) > 0) {
-            // Nothing queued - poll the modem
-            update_timer_ = elapsed_us_ + (kPollingInterval * 1000);
-            poll_modem();
-        }
     }
 
-    void Modem::reinit()
-    {
-        stop_send();
-        stop_receive();
-        free_pending();
+    if (apn == nullptr)
+        return -EINVAL;
 
-        while(cmd_buffer_.size() > 0) {
-            delete cmd_buffer_.front();
-            cmd_buffer_.pop_front();
-        }
+    Command *cmd = new Command(5000);
+    if (cmd == nullptr)
+        return -ENOMEM;
 
-        signal_ = 99;
-        service_ = 0;
-        creg_ = 0;
-        cgreg_ = 0;
-        cereg_ = 0;
+    char buffer[64];
+    int size = 0;
 
-        memset(ip_address_, '\0', sizeof(ip_address_));
+    // AT+CMEE=1 - enable numeric error codes
+    cmd->add("+CMEE=1");
 
-        device_state_ = State::probe;
-        next_state_ = State::probe;
-        sock_state_ = SocketState::idle;
-        rx_available_ = 0;
-        tx_available_ = 0;
+    // AT+CNMP=[mode] - preferred mode selection
+    size = snprintf(buffer, sizeof(buffer), "+CNMP=%d", mode);
+    if (size < 0)
+        return size;
 
-        // Clear queued data
-        ctx_->read(response_, kBufferSize);
-        memset(response_, 0, kBufferSize);
-    }
+    cmd->add(buffer, size);
 
-    int Modem::disable()
-    {
-        reinit();
+    // AT+CGDCONT=1,"IP",[apn] - Define PDP context
+    size = snprintf(buffer, sizeof(buffer),
+            "+CGDCONT=1,\"IP\",\"%s\"", apn);
 
-        // AT+CFUN=0 - minimum functionality mode
-        Command *cmd = Command::create(10000, "AT+CFUN=0\r");
-        if(cmd == nullptr)
-            return -ENOMEM;
+    if (size < 0)
+        return size;
 
-        int result = push_command(cmd);
-        if(result) {
-            delete cmd;
-            return result;
-        }
+    cmd->add(buffer, size);
 
-        LOG_INFO("Powering off modem...\n");
-        set_state(State::offline);
-        return 0;
-    }
-
-    int Modem::reset()
-    {
-        reinit();
-
-        // AT+CFUN=1,1 - reset phone module
-        Command *cmd = Command::create(10000, "AT+CFUN=1,1\r");
-        if(cmd == nullptr)
-            return -ENOMEM;
-
-        int result = push_command(cmd);
-        if(result) {
-            delete cmd;
-            return result;
-        }
-
-        LOG_INFO("Resetting modem...\n");
-        set_state(State::reset);
-        return 0;
-    }
-
-    int Modem::unlock(const char *pin)
-    {
-        if(pin == nullptr)
-            return -EINVAL;
-
-        // AT+CPIN=[pin] - enter pin
-        Command *cmd = Command::create(kDefaultTimeout,
-            "AT+CPIN=\"%s\"\r", pin);
-
-        if(cmd == nullptr)
-            return -ENOMEM;
-
-        int result = push_command(cmd);
-        if(result)
-            delete cmd;
-
+    int result = push_command(cmd);
+    if (result) {
+        delete cmd;
         return result;
     }
 
-    int Modem::authenticate(const char *apn, const char *user, const char *pwd)
-    {
-        if(apn == nullptr)
-            return -EINVAL;
+    set_state(State::searching);
+    return 0;
+}
 
-        if(user == nullptr)
-            user = "";
+int Modem::authenticate(const char *apn, const char *user, const char *pwd)
+{
+    if (apn == nullptr)
+        return -EINVAL;
 
-        if(pwd == nullptr)
-            pwd = "";
+    switch (next_state) {
+    // Invalid state, return error
+    case State::reset:
+        return -ENODEV;
+    case State::ready:
+    case State::error:
+    case State::searching:
+        return -ENETUNREACH;
+    case State::authenticating:
+        return -EALREADY;
+    case State::handshaking:
+    case State::open:
+    case State::closing:
+        return -EBUSY;
 
-        switch(device_state_) {
-            // Invalid state, return error
-            case State::reset:
-            case State::probe:
-                return -ENODEV;
-            case State::init:
-            case State::offline:
-            case State::locked:
-            case State::searching:
-                return -ENETUNREACH;
-            case State::authenticating:
-                return -EALREADY;
-            case State::handshaking:
-            case State::open:
-            case State::closing:
-                return -EBUSY;
+        // Continue
+    case State::registered:
+    case State::online:
+        break;
+    }
 
-            // Continue
-            case State::registered:
-            case State::ready:
-                break;
+    Command *cmd = new Command(65000);
+    if (cmd == nullptr)
+        return -ENOMEM;
+
+    char buffer[64];
+    int size = 0;
+
+    // AT+CIPSHUT - reset GPRS context
+    cmd->add("+CIPSHUT");
+
+    // AT+CIPMUX=0 - set single IP mode
+    cmd->add("+CIPMUX=0");
+
+    // AT+CIPRXGET=1 - set manual data receive
+    cmd->add("+CIPRXGET=1");
+
+    // AT+CIPATS=1,%d - set auto sending timer
+    cmd->add("+CIPATS=1,1");
+
+    // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
+    if (user == nullptr) {
+        size = snprintf(buffer, sizeof(buffer),
+                "+CSTT=\"%s\"", apn);
+    }
+    else if (pwd == nullptr) {
+        size = snprintf(buffer, sizeof(buffer),
+                "+CSTT=\"%s\",\"%s\"", apn, user);
+    }
+    else {
+        size = snprintf(buffer, sizeof(buffer),
+                "+CSTT=\"%s\",\"%s\",\"%s\"", apn, user, pwd);
+    }
+
+    if (size < 0)
+        return size;
+
+    cmd->add(buffer, size);
+
+    int result = push_command(cmd);
+    if (result) {
+        delete cmd;
+        return result;
+    }
+
+    // AT+CIICR - activate data connection
+    cmd = new Command(85000, "+CIICR");
+    if (cmd == nullptr)
+        return -ENOMEM;
+
+    result = push_command(cmd);
+    if (result) {
+        delete cmd;
+        return result;
+    }
+
+    LOG_INFO("Authenticating\n");
+    set_state(State::authenticating);
+    return 0;
+}
+
+int Modem::connect(const char *host, unsigned int port)
+{
+    if (host == nullptr || port == 0)
+        return -EINVAL;
+
+    switch (next_state) {
+    // Invalid state, return error
+    case State::reset:
+        return -ENODEV;
+    case State::ready:
+    case State::error:
+    case State::searching:
+        return -ENETUNREACH;
+    case State::registered:
+    case State::authenticating:
+        return -ENOTCONN;
+    case State::handshaking:
+        return -EALREADY;
+    case State::open:
+        return -EADDRINUSE;
+    case State::closing:
+        return -EBUSY;
+
+        // Continue
+    case State::online:
+        break;
+    }
+
+    Command *cmd = new Command(75000);
+    if (cmd == nullptr)
+        return -ENOMEM;
+
+    char buffer[64];
+    int size = snprintf(buffer, sizeof(buffer),
+            "+CIPSTART=\"TCP\",\"%s\",%d", host, port);
+
+    if (size < 0)
+        return size;
+
+    // AT+CIPSTART=[mode],[host],[port] - start a new connection
+    cmd->add(buffer, size);
+
+    int result = push_command(cmd);
+    if (result) {
+        delete cmd;
+        return result;
+    }
+
+    LOG_INFO("Handshaking\n");
+    set_state(State::handshaking);
+    return 0;
+}
+
+int Modem::close(bool quick)
+{
+    switch (next_state) {
+    // Invalid state, return error
+    case State::reset:
+        return -ENODEV;
+    case State::ready:
+    case State::error:
+    case State::searching:
+        return -ENETUNREACH;
+    case State::registered:
+    case State::authenticating:
+    case State::online:
+    case State::handshaking:
+        return -ENOTSOCK;
+    case State::closing:
+        return -EALREADY;
+
+        // Continue
+    case State::open:
+        break;
+    }
+
+    Command *cmd = nullptr;
+    if (quick) {
+        // Kill the connection and return immediately
+        cmd = new Command(kDefaultTimeout, "+CIPCLOSE=1");
+    }
+    else {
+        // Wait for server to acknowledge the close request
+        cmd = new Command(30000, "+CIPCLOSE");
+    }
+
+    if (cmd == nullptr)
+        return -ENOMEM;
+
+    int result = push_command(cmd);
+    if (result)
+        delete cmd;
+
+    LOG_INFO("Closing TCP connection...\n");
+    set_state(State::closing);
+    return result;
+}
+
+void Modem::receive(void *data, size_t size)
+{
+    rx_buffer = static_cast<uint8_t*>(data);
+    rx_size = size;
+    rx_index = 0;
+}
+
+void Modem::stop_receive()
+{
+    const bool stopped = rx_busy();
+    receive(nullptr, 0);
+    if (stopped)
+        emit_event(Event::rx_complete);
+}
+
+void Modem::send(const void *data, size_t size)
+{
+    tx_buffer = static_cast<const uint8_t*>(data);
+    tx_size = size;
+    tx_index = 0;
+}
+
+void Modem::stop_send()
+{
+    const bool stopped = tx_busy();
+    send(nullptr, 0);
+    if (stopped)
+        emit_event(Event::tx_complete);
+}
+
+void Modem::set_state(State state)
+{
+    next_state = state;
+}
+
+void Modem::free_pending()
+{
+    assert(pending != nullptr);
+    delete pending;
+    pending = nullptr;
+}
+
+int Modem::push_command(Command *cmd)
+{
+    if (cmd == nullptr)
+        return -EINVAL;
+
+    if (cmd->size() >= kBufferSize)
+        return -EMSGSIZE;
+
+    cmd_buffer.push(cmd);
+    return 0;
+}
+
+int Modem::poll_modem()
+{
+    Command *cmd = nullptr;
+
+    switch (status()) {
+    case State::reset:
+        case State::ready:
+        cmd = new Command(1000); // AT
+        update_timer = millis() + 1000;
+        break;
+    case State::searching:
+    case State::registered:
+    case State::online:
+        cmd = new Command(10000);
+        if (cmd != nullptr) {
+            // AT+CSQ - signal quality report
+            cmd->add("+CSQ");
+            // AT+CREG? - network registration status
+            cmd->add("+CREG?");
+            // AT+CGREG? - GPRS registration status
+            cmd->add("+CGREG?");
+            // AT+CEREG? - EPS registration status
+            cmd->add("+CEREG?");
+            // AT+CGATT? - GPRS service status
+            cmd->add("+CGATT?");
         }
+        break;
+    case State::open:
+        cmd = new Command(1000);
+        if (cmd != nullptr) {
+            // AT+CSQ - signal quality report
+            cmd->add("+CSQ");
+            // AT+CIPRXGET=4 - query socket unread bytes
+            cmd->add("+CIPRXGET=4");
+            // AT+CIPSEND? - query available size of tx buffer
+            cmd->add("+CIPSEND?");
+        }
+        break;
+    case State::authenticating:
+        // AT+CIFSR - get local IP address
+        cmd = new Command(1000, "+CIFSR");
+        cifsr_flag = true;
+        break;
+    case State::handshaking:
+    case State::error:
+    case State::closing:
+        return 0;
+    }
 
-        // AT+CIPSHUT - reset GPRS context
-        // AT+CIPMUX=0 - set single IP mode
-        // AT+CIPRXGET=1 - set manual data receive
-        // AT+CIPQSEND=1 - set quick send
-        // AT+CSTT=[apn],[user],[pwd] - set apn/user/password for GPRS context
-        Command *cmd = Command::create(65000,
-            "AT+CIPSHUT;+CIPMUX=0;+CIPRXGET=1;+CIPQSEND=1;"
-            "+CSTT=\"%s\",\"%s\",\"%s\"\r", apn, user, pwd);
+    if (cmd == nullptr)
+        return -ENOMEM;
 
-        if(cmd == nullptr)
+    int result = push_command(cmd);
+    if (result != 0) {
+        delete cmd;
+        return result;
+    }
+
+    return 0;
+}
+
+int Modem::socket_receive(size_t size)
+{
+    if (sock_state != SocketState::command)
+        return -EBUSY;
+
+    const size_t available = std::min(modem_rx_available, kSocketMax);
+    if (size > available)
+        size = available;
+
+    if (size <= 0)
+        return 0;
+
+    Command *cmd = new Command();
+    if (cmd == nullptr)
+        return -ENOMEM;
+
+    char buffer[64];
+    int len = snprintf(buffer, sizeof(buffer), "+CIPRXGET=2,%d", size);
+    if (len < 0)
+        return len;
+
+    // AT+CIPRXGET=2,[size] - read 'size' bytes from the socket
+    cmd->add(buffer, len);
+
+    int result = push_command(cmd);
+    if (result) {
+        delete cmd;
+        return result;
+    }
+
+    LOG_VERBOSE("RTR %d bytes (%d)\n", size, modem_rx_available);
+    return size;
+}
+
+int Modem::socket_send(const uint8_t *data, size_t size)
+{
+    if (sock_state != SocketState::command)
+        return -EBUSY;
+
+    const size_t available = std::min(modem_tx_available, kSocketMax);
+    if (size > available)
+        size = available;
+
+    if (size > 0) {
+        Command *cmd = new Command(1000);
+        if (cmd == nullptr)
             return -ENOMEM;
 
+        char buffer[64];
+        int len = snprintf(buffer, sizeof(buffer), "+CIPSEND=%d", size);
+        if (len < 0)
+            return len;
+
+        // AT+CIPSEND=[size] - indicate that data is about to be sent
+        cmd->add(buffer, len);
+
         int result = push_command(cmd);
-        if(result) {
+        if (result) {
             delete cmd;
             return result;
         }
 
-        // AT+CIICR - activate data connection
-        cmd = Command::create(85000, "AT+CIICR\r");
+        // Send the data
+        std::vector<uint8_t> payload(size);
+        memcpy(payload.data(), data, size);
 
-        if(cmd == nullptr)
+        cmd = new Command(645000, payload);
+        if (cmd == nullptr)
             return -ENOMEM;
 
         result = push_command(cmd);
-        if(result) {
+        if (result) {
             delete cmd;
             return result;
         }
-
-        LOG_INFO("Authenticating...\n");
-        set_state(State::authenticating);
-        return 0;
     }
 
-    int Modem::connect(const char *host, int port)
-    {
-        if(host == nullptr)
-            return -EINVAL;
-
-        switch(device_state_) {
-            // Invalid state, return error
-            case State::reset:
-            case State::probe:
-                return -ENODEV;
-            case State::init:
-            case State::offline:
-            case State::locked:
-            case State::searching:
-                return -ENETUNREACH;
-            case State::registered:
-            case State::authenticating:
-                return -ENOTCONN;
-            case State::handshaking:
-                return -EALREADY;
-            case State::open:
-                return -EADDRINUSE;
-            case State::closing:
-                return -EBUSY;
-
-            // Continue
-            case State::ready:
-                break;
-        }
-
-        // AT+CIPSTART=[mode],[host],[port] - start a new connection
-        Command *cmd = Command::create(75000,
-            "AT+CIPSTART=\"TCP\",\"%s\",%d\r", host, port);
-
-        if(cmd == nullptr)
-            return -ENOMEM;
-
-        int result = push_command(cmd);
-        if(result) {
-            delete cmd;
-            return result;
-        }
-
-        LOG_INFO("Handshaking...\n");
-        set_state(State::handshaking);
-        return 0;
-    }
-
-    int Modem::disconnect()
-    {
-        switch(device_state_) {
-            // Invalid state, return error
-            case State::reset:
-            case State::probe:
-                return -ENODEV;
-            case State::init:
-            case State::offline:
-            case State::locked:
-            case State::searching:
-                return -ENETUNREACH;
-            case State::registered:
-            case State::authenticating:
-            case State::ready:
-            case State::handshaking:
-                return -ENOTSOCK;
-            case State::closing:
-                return -EALREADY;
-
-            // Continue
-            case State::open:
-                break;
-        }
-
-        // AT+CIPCLOSE - close connection
-        Command *cmd = Command::create(kDefaultTimeout, "AT+CIPCLOSE\r");
-        if(cmd == nullptr)
-            return -ENOMEM;
-
-        int result = push_command(cmd);
-        if(result)
-            delete cmd;
-
-        LOG_INFO("Closing TCP connection...\n");
-        set_state(State::closing);
-        return result;
-    }
-
-    void Modem::receive(void *data, int size)
-    {
-        rx_buffer_ = static_cast<uint8_t*>(data);
-        rx_size_ = size;
-        rx_count_ = 0;
-    }
-
-    void Modem::stop_receive()
-    {
-        const bool stopped = rx_busy();
-        receive(nullptr, 0);
-        if(stopped)
-            emit_event(Event::rx_stopped);
-    }
-
-    void Modem::send(const void *data, int size)
-    {
-        tx_buffer_ = static_cast<const uint8_t*>(data);
-        tx_size_ = size;
-        tx_count_ = 0;
-    }
-
-    void Modem::stop_send()
-    {
-        const bool stopped = tx_busy();
-        send(nullptr, 0);
-        if(stopped)
-            emit_event(Event::tx_stopped);
-    }
-
-    void Modem::set_state(State state)
-    {
-        next_state_ = state;
-    }
-
-    void Modem::emit_event(Event event)
-    {
-        if(event_cb_)
-            event_cb_(event, event_cb_user_);
-    }
-
-    void Modem::free_pending()
-    {
-        if(pending_) {
-            delete pending_;
-            pending_ = nullptr;
-        }
-
-        response_size_ = 0;
-    }
-
-    bool Modem::response_complete()
-    {
-        if(memstr(response_, "\r\nOK\r\n", response_size_))
-            return true;
-
-        if(memstr(response_, "\r\nERROR\r\n", response_size_))
-            return true;
-
-        // Find CME errors
-        void *cme = memstr(response_, "+CME ERROR:", response_size_);
-        if(cme != nullptr) {
-            int length = (static_cast<uint8_t*>(cme) - response_) + 2;
-            if(memchr(cme, '\n', length))
-                return true;
-        }
-
-        return false;
-    }
-
-    int Modem::push_command(Command *cmd)
-    {
-        assert(cmd);
-        if(cmd->size() >= kBufferSize)
-            return -EMSGSIZE;
-
-        cmd_buffer_.push_back(cmd);
-        return 0;
-    }
-
-    int Modem::shift_command(Command *cmd)
-    {
-        assert(cmd);
-        if(cmd->size() >= kBufferSize)
-            return -EMSGSIZE;
-
-        cmd_buffer_.push_front(cmd);
-        return 0;
-    }
-
-    int Modem::poll_modem()
-    {
-        Command *cmd = nullptr;
-
-        switch(device_state_) {
-            case State::reset:
-                set_state(State::probe);
-                cmd = Command::create(1000, "AT\r");
-                break;
-            case State::probe:
-                cmd = Command::create(1000, "AT\r");
-                break;
-            case State::init:
-            case State::locked:
-                // AT+CFUN? - power status
-                // AT+CPIN? - SIM status
-                cmd = Command::create(10000, "AT+CFUN?;+CPIN?\r");
-                break;
-            case State::searching:
-            case State::registered:
-            case State::ready:
-                // AT+CSQ - signal quality report
-                // AT+CREG? - network registration status
-                // AT+CGREG? - GPRS registration status
-                // AT+CEREG? - EPS registration status
-                // AT+CGATT? - GPRS service status
-                cmd = Command::create(1000,
-                    "AT+CSQ;+CREG?;+CGREG?;+CEREG?;+CGATT?\r");
-
-                break;
-            case State::open:
-                // AT+CSQ - signal quality report
-                // AT+CIPRXGET=4 - query socket unread bytes
-                // AT+CIPSEND? - query available size of tx buffer
-                // AT+CIPSTATUS - TCP connection status
-                cmd = Command::create(1000,
-                    "AT+CSQ;+CIPRXGET=4;+CIPSEND?;+CIPSTATUS\r");
-
-                sock_state_ = SocketState::idle;
-                break;
-            case State::authenticating:
-                // AT+CIFSR - get local IP address
-                cmd = Command::create(1000, "AT+CIFSR\r");
-                break;
-            default:
-                return 0;
-        }
-
-        if(cmd == nullptr)
-            return -ENOMEM;
-
-        int result = push_command(cmd);
-        if(result)
-            delete cmd;
-
-        return result;
-    }
-
-    int Modem::socket_receive(int count)
-    {
-        const int available = std::min(rx_available_, kSocketMax);
-        if(count > available)
-            count = available;
-
-        if(count <= 0)
-            return 0;
-
-        if(sock_state_ != SocketState::idle)
-            return -EBUSY;
-
-        // AT+CIPRXGET=2,[size] - read 'size' bytes from the socket
-        Command *cmd = Command::create(kDefaultTimeout,
-            "AT+CIPRXGET=2,%d\r", count);
-
-        if(cmd == nullptr)
-            return -ENOMEM;
-
-        int result = shift_command(cmd);
-        if(result) {
-            delete cmd;
-            return result;
-        }
-
-        LOG_VERBOSE("RTR %d bytes (%d)\n", count, rx_size_-rx_count_);
-        sock_state_ = SocketState::rtr;
-        return 0;
-    }
-
-    int Modem::socket_send(int count)
-    {
-        const int available = std::min(tx_available_, kSocketMax);
-        if(count > available)
-            count = available;
-
-        if(count <= 0)
-            return 0;
-
-        if(sock_state_ != SocketState::idle)
-            return -EBUSY;
-
-        // AT+CIPSEND=[size] - indicate that data is about to be sent
-        Command *cmd = Command::create(645000,
-            "AT+CIPSEND=%d\r", count);
-
-        if(cmd == nullptr)
-            return -ENOMEM;
-
-        int result = shift_command(cmd);
-        if(result) {
-            delete cmd;
-            return result;
-        }
-
-        tx_pending_ = count;
-
-        LOG_VERBOSE("RTS %d bytes (%d)\n", tx_pending_, (tx_size_ - tx_count_));
-        sock_state_ = SocketState::rts;
-        return 0;
-    }
-
-    void Modem::process_timeout()
-    {
-        free_pending();
-
-        switch(device_state_) {
-            case State::reset:
-            case State::probe:
-                // Ignore
-                break;
-            case State::init:
-                LOG_WARN("Init timeout\n");
-                set_state(State::probe);
-                emit_event(Event::timeout);
-                break;
-            case State::authenticating:
-                LOG_WARN("Authentication timeout\n");
-                set_state(State::searching);
-                emit_event(Event::auth_error);
-                break;
-            case State::handshaking:
-                LOG_WARN("TCP connection timeout\n");
-                set_state(State::ready);
-                emit_event(Event::conn_error);
-                break;
-            case State::open:
-                LOG_WARN("Socket timeout\n");
-                if(sock_state_ == SocketState::cts)
-                    emit_event(Event::tx_error);
-                else if(sock_state_ == SocketState::rtr)
-                    emit_event(Event::rx_error);
-                break;
-            case State::closing:
-                LOG_WARN("Close timeout\n");
-                set_state(State::ready);
-                break;
-            default:
-                LOG_WARN("Command timeout\n");
-                emit_event(Event::timeout);
-                break;
-        }
-    }
-
-    void Modem::process_probe()
-    {
-        // Wait for an 'OK' response
-        if(!memstr(response_, "\r\nOK\r\n", response_size_))
-            return;
-
-        free_pending();
-
-        // ATE0 - disable echo
-        // AT+CNMP - preferred mode selection
-        Command *cmd = Command::create(1000, "ATE0;+CNMP=%d;+CMEE=1\r", mode_);
-        if(cmd == nullptr)
-            return;
-
-        if(push_command(cmd) != 0) {
-            delete cmd;
-            return;
-        }
-
-        set_state(State::init);
-    }
-
-    void Modem::process_general()
-    {
-        if(!response_complete())
-            return;
-
-        // Parse lines
-        uint8_t *start = response_;
-        int size = response_size_;
-
-        while(size > 4) {
-            uint8_t *end = static_cast<uint8_t*>(memchr(start, '\n', size));
-            if(end == nullptr)
-                break;
-
-            int length = (end - start) + 1;
-            if(length > 4) {
-                if(memstr(start, "+CSQ:", length)) {
-                    void *data = memchr(start, ':', length);
-
-                    // +CSQ: %d,%d\r\n
-                    // │   │
-                    // │   └ data
-                    // └ start
-
-                    signal_ = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-                }
-                else if(memstr(start, "+CREG:", length)) {
-                    void *data = memchr(start, ',', length);
-
-                    // +CREG: %d,%d\r\n
-                    // │        │
-                    // │        └ data
-                    // └ start
-
-                    creg_ = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-                }
-                else if(memstr(start, "+CGREG:", length)) {
-                    void *data = memchr(start, ',', length);
-
-                    // +CGREG: %d,%d\r\n
-                    // │         │
-                    // │         └ data
-                    // └ start
-
-                    cgreg_ = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-                }
-                else if(memstr(start, "+CEREG:", length)) {
-                    void *data = memchr(start, ',', length);
-
-                    // +CEREG: %d,%d\r\n
-                    // │         │
-                    // │         └ data
-                    // └ start
-
-                    cereg_ = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-                }
-                else if(memstr(start, "+CGATT:", length)) {
-                    void *data = memchr(start, ':', length);
-
-                    // +CGATT: %d\r\n
-                    // │     │
-                    // │     └ data
-                    // └ start
-
-                    service_ = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-                }
-                else if(memstr(start, "+CPIN: READY", length)) {
-                    if(device_state_ < State::searching) {
-                        LOG_INFO("Modem online\n");
-                        set_state(State::searching);
-                    }
-                }
-                else if(memstr(start, "+CPIN: SIM PUK", length)
-                    || memstr(start, "+CPIN: SIM PIN", length)) {
-                    if(device_state_ != State::locked) {
-                        LOG_INFO("SIM locked\n");
-                        set_state(State::locked);
-                    }
-                }
-                else if(memstr(start, "+CPIN: NOT READY", length)) {
-                    if(device_state_ != State::offline) {
-                        LOG_INFO("Modem offline\n");
-                        set_state(State::offline);
-                    }
-                }
-                else if(memstr(start, "+CFUN:", length)) {
-                    void *data = memchr(start, ':', length);
-
-                    // +CFUN: %d\r\n
-                    // │    │
-                    // │    └ data
-                    // └ start
-
-                    const int status = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-
-                    if(status == 0 && device_state_ != State::offline) {
-                        LOG_INFO("Modem offline\n");
-                        set_state(State::offline);
-                    }
-                }
-                else if(memstr(start, "+CME ERROR:", length)) {
-                    void *data = memchr(start, ':', length);
-
-                    // +CME ERROR: %d\r\n
-                    // │         │
-                    // │         └ data
-                    // └ start
-
-                    const int error = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-
-                    if(error_cb_)
-                        error_cb_(error, error_cb_user_);
-                }
-            }
-
-            start = end + 1;
-            size -= length;
-        }
-
-        bool reg = false;
-
-        if(creg_ == 1 || creg_ == 5)
-            reg = true;  // GSM (2G)
-
-        if(cgreg_ == 1 || cgreg_ == 5)
-            reg = true;  // GPRS (2G/3G)
-
-        if(cereg_ == 1 || cereg_ == 5)
-            reg = true; // EPS (3G/LTE)
-
-        if(signal_ != 99 && service_ && reg) {
-            if(device_state_ < State::registered) {
-                LOG_INFO("Registered\n");
-                set_state(State::registered);
-            }
-        }
-        else {
-            if(device_state_ >= State::registered) {
-                LOG_INFO("Searching for network\n");
-                set_state(State::searching);
-            }
-        }
-
-        free_pending();
-    }
-
-    void Modem::process_authentication()
-    {
-        /**
-         * Clear any pending 'OK' responses. We know that the authentication
-         * is successful once we get an IP address from AT+CIFSR.
-         */
-        if(memstr(response_, "\r\nOK\r\n", response_size_)
-            || memstr(response_, "\r\nSHUT OK\r\n", response_size_)) {
-            free_pending();
-            return;
-        }
-
-        if(memstr(response_, "\r\nERROR\r\n", response_size_)) {
-            LOG_INFO("Authentication error\n");
-            set_state(State::registered);
-            free_pending();
-            emit_event(Event::auth_error);
-            return;
-        }
-
-        // Parse lines
-        uint8_t *start = response_;
-        int size = response_size_;
-
-        while(size > 4) {
-            uint8_t *end = static_cast<uint8_t*>(memchr(start, '\n', size));
-            if(end == nullptr)
-                break;
-
-            int length = (end - start) + 1;
-            if(length > 4) {
-                // Parse IP address from AT+CIFSR
-                unsigned int a,b,c,d;
-                char *data = reinterpret_cast<char *>(start);
-                if(sscanf(data, "%3u.%3u.%3u.%3u", &a, &b, &c, &d) == 4) {
-                    // Store IP address
-                    snprintf(ip_address_, sizeof(ip_address_),
-                        "%u.%u.%u.%u", a, b, c, d);
-
-                    LOG_INFO("Connected to GPRS\n");
-                    set_state(State::ready);
-                    free_pending();
-                }
-            }
-
-            start = end + 1;
-            size -= length;
-        }
-    }
-
-    void Modem::process_handshaking()
-    {
-        // Parse lines
-        uint8_t *start = response_;
-        int size = response_size_;
-
-        while(size > 4) {
-            uint8_t *end = static_cast<uint8_t*>(memchr(start, '\n', size));
-            if(end == nullptr)
-                break;
-
-            int length = (end - start) + 1;
-            if(length > 4) {
-                // Expected responses to AT+CIPSTART=...
-                if(memstr(start, "CONNECT OK", length)) {
-                    LOG_INFO("TCP socket connected\n");
-                    sock_state_ = SocketState::idle;
-                    set_state(State::open);
-                    free_pending();
-                    break;
-                }
-                else if(memstr(start, "ALREADY CONNECT", length)) {
-                    set_state(State::open);
-                    free_pending();
-                    break;
-                }
-                else if(memstr(start, "CONNECT FAIL", length)) {
-                    LOG_WARN("TCP connection failed\n");
-                    set_state(State::ready);
-                    free_pending();
-                    emit_event(Event::conn_error);
-                    break;
-                }
-            }
-
-            start = end + 1;
-            size -= length;
-        }
-    }
-
-    void Modem::process_close()
-    {
-        // Parse lines
-        uint8_t *start = response_;
-        int size = response_size_;
-
-        while(size > 4) {
-            uint8_t *end = static_cast<uint8_t*>(memchr(start, '\n', size));
-            if(end == nullptr)
-                break;
-
-            int length = (end - start) + 1;
-            if(length > 4) {
-                // Expected responses to AT+CIPCLOSE
-                if(memstr(start, "CLOSE OK", length)) {
-                    LOG_INFO("TCP socket closed\n");
-                    set_state(State::ready);
-                    free_pending();
-                }
-                else if(memstr(start, "ERROR", length)) {
-                    LOG_INFO("Error during close\n");
-                    set_state(State::ready);
-                    free_pending();
-                }
-            }
-
-            start = end + 1;
-            size -= length;
-        }
-    }
-
-    void Modem::process_socket()
-    {
-        switch(sock_state_) {
-            case SocketState::idle:
-                // Idle
-                socket_state_idle();
-                break;
-            case SocketState::rtr:
-                // Ready to receive
-                socket_state_rtr();
-                break;
-            case SocketState::rts:
-                // Request to send
-                socket_state_rts();
-                break;
-            case SocketState::cts:
-                // Clear to send
-                socket_state_cts();
-                break;
-        }
-    }
-
-    void Modem::socket_state_idle()
-    {
-        if(!response_complete())
-            return;
-
-        // Parse lines
-        uint8_t *start = response_;
-        int size = response_size_;
-
-        while(size > 4) {
-            uint8_t *end = static_cast<uint8_t*>(memchr(start, '\n', size));
-            if(end == nullptr)
-                break;
-
-            int length = (end - start);
-            if(length >= 4) {
-                if(memstr(start, "+CPIN: NOT READY", length)) {
-                    LOG_INFO("Modem offline\n");
-
-                    stop_send();
-                    stop_receive();
-
-                    set_state(State::offline);
-                    break;
-                }
-                else if(memstr(start, "TCP CLOSED", length)) {
-                    LOG_INFO("TCP socket disconnected\n");
-
-                    stop_send();
-                    stop_receive();
-
-                    sock_state_ = SocketState::idle;
-                    set_state(State::ready);
-                    break;
-                }
-                else if(memstr(start, "CONNECT OK", length)) {
-                    const int tx_requested = (tx_buffer_)
-                        ? (tx_size_ - tx_count_) : 0;
-
-                    const int rx_requested = (rx_buffer_)
-                        ? (rx_size_ - rx_count_) : 0;
-
-                    if(tx_requested && tx_available_) {
-                        socket_send(tx_requested);
-                    }
-                    else if(rx_requested && rx_available_) {
-                        socket_receive(rx_requested);
-                    }
-
-                    free_pending();
-                }
-                else if(memstr(start, "+CIPRXGET: 4", length)) {
-                    void *data = memchr(start, ',', length);
-
-                    // +CIPRXGET: 4,%d\r\nOK\r\n
-                    // │           │
-                    // │           └ data
-                    // └ start
-
-                    const int count = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-
-                    if(count > rx_available_)
-                        emit_event(Event::new_data);
-
-                    rx_available_ = count;
-                }
-                else if(memstr(start, "+CIPSEND:", length)) {
-                    void *data = memchr(start, ':', length);
-
-                    // +CIPSEND: %d\r\nOK\r\n
-                    // │       │
-                    // │       └ data
-                    // └ start
-
-                    tx_available_ = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-                }
-                else if(memstr(start, "+CSQ:", length)) {
-                    void *data = memchr(start, ':', length);
-
-                    // +CSQ: %d,%d\r\n
-                    // │   │
-                    // │   └ data
-                    // └ start
-
-                    signal_ = strtol(
-                        static_cast<char*>(data)+1, nullptr, 10);
-                }
-                else if(memstr(start, "ALREADY CONNECT", length)) {
-                    free_pending();
-                }
-            }
-
-            start = end + 1;
-            size -= length;
-        }
-    }
-
-    void Modem::socket_state_rtr()
-    {
-        if(memstr(response_, "ERROR", response_size_)) {
-            LOG_ERROR("Error during receive\n");
-            sock_state_ = SocketState::idle;
-            free_pending();
-            emit_event(Event::rx_error);
-            return;
-        }
-
-        if(!memstr(response_, "\r\nOK\r\n", response_size_)) {
-            return;
-        }
-
-        uint8_t *start = static_cast<uint8_t*>(
-            memstr(response_, "+CIPRXGET: 2", response_size_));
-
-        if(start) {
-            int size = response_size_ - (start - response_);
-
-            void *data = memchr(start, ',', size);
-
-            // +CIPRXGET: 2,%d,%d,%s\r\n%s\r\nOK\r\n
-            // │           │
-            // │           └ data
-            // └ start
-
-            const int count = strtol(
-                reinterpret_cast<char*>(data)+1, nullptr, 10);
-
-            // Guard against partial read
-            if(size < (count + 6))
-                return;
-
-            data = memchr(start, '\n', size);
-
-            // +CIPRXGET: 2,%d,%d,%s\r\n%s\r\nOK\r\n
-            // │                       │
-            // │                       └ data
-            // └ start
-
-            LOG_INFO("Received %d bytes (%d)\n",
-                    count, rx_size_ - rx_count_ - count);
-
-            rx_available_ -= count;
-            if(rx_buffer_) {
-                uint8_t *destination = rx_buffer_ + rx_count_;
-                memcpy(destination, static_cast<uint8_t*>(data)+1, count);
-
-                rx_count_ += count;
-                if(rx_count_ >= rx_size_)
-                    emit_event(Event::rx_complete);
-            }
-
-            sock_state_ = SocketState::idle;
-            free_pending();
-        }
-    }
-
-    void Modem::socket_state_rts()
-    {
-        if(memstr(response_, "ERROR", response_size_)) {
-            LOG_ERROR("Staging error\n");
-            sock_state_ = SocketState::idle;
-            free_pending();
-            emit_event(Event::tx_error);
-            return;
-        }
-
-        if(memchr(response_, '>', response_size_) == nullptr)
-            return;
-
-        if(tx_buffer_) {
-            // Send data
-            const uint8_t *buffer = tx_buffer_ + tx_count_;
-            ctx_->write(buffer, tx_pending_);
-
-            LOG_VERBOSE("CTS %d bytes (%d)\n",
-                tx_pending_, (tx_size_ - tx_count_));
-        }
-        else {
-            /*
-             * The send was canceled, but the modem is still
-             * expecting data. Send zeroes until the buffer is
-             * full.
-             */
-            uint8_t *buffer = static_cast<uint8_t*>(malloc(kBufferSize));
-            memset(buffer, '\0', kBufferSize);
-
-            ctx_->write(buffer, tx_pending_);
-
-            free(buffer);
-        }
-
-        command_timer_ = elapsed_us_ + (kDefaultTimeout * 1000);
-        sock_state_ = SocketState::cts;
-    }
-
-    void Modem::socket_state_cts()
-    {
-        if(memstr(response_, "CLOSED", response_size_)) {
-            LOG_ERROR("TCP socket disconnected\n");
-            sock_state_ = SocketState::idle;
-            set_state(State::ready);
-            free_pending();
-            emit_event(Event::tx_error);
-            return;
-        }
-
-        if(memstr(response_, "ERROR", response_size_)) {
-            LOG_ERROR("Send error\n");
-            sock_state_ = SocketState::idle;
-            free_pending();
-            emit_event(Event::tx_error);
-            return;
-        }
-
-        uint8_t *start = static_cast<uint8_t*>(
-            memstr(response_, "DATA ACCEPT:", response_size_));
-
-        if(start) {
-            const int size = response_size_ - (start - response_);
-
-            if(memchr(start, '\n', size)) {
-                void *data = memchr(start, ':', size);
-
-                // +DATA ACCEPT:%d\r\n
-                // │           │
-                // │           └ data
-                // └ p_data
-
-                const int count = strtol(
-                    static_cast<char*>(data)+1, nullptr, 10);
-
-                LOG_INFO("Sent %d bytes (%d)\n",
-                    count, tx_size_ - tx_count_ - count);
-
-                tx_count_ += count;
-                if(tx_count_ >= tx_size_)
-                emit_event(Event::tx_complete);
-
-                sock_state_ = SocketState::idle;
-                free_pending();
-            }
-        }
-    }
-
-    Modem::Command::~Command()
-    {
-        if(data_ != nullptr)
-            free(data_);
-    }
-
-    Modem::Command *Modem::Command::create(int timeout_ms, const char *command, ...)
-    {
-        char *buffer = static_cast<char*>(malloc(kBufferSize));
-        if(buffer == nullptr)
-            return nullptr;
-
-        va_list argp;
-        va_start(argp, command);
-        int size = vsnprintf(buffer, kBufferSize, command, argp);
-        va_end(argp);
-
-        uint8_t *data = static_cast<uint8_t*>(realloc(buffer, size));
-        if(data == nullptr) {
-            free(buffer);
-            return nullptr;
-        }
-
-        return new (std::nothrow) Command(timeout_ms, data, size);
+    LOG_VERBOSE("RTS %d bytes (%d)\n", size, (tx_size - tx_index));
+    return size;
+}
+
+void Modem::handle_timeout()
+{
+    // Ignore timeouts for 'AT\r'
+    const bool ignored = (pending->size() == 3);
+
+    free_pending();
+
+    if (ignored)
+        return;
+
+    switch (device_state) {
+    case State::reset:
+        case State::ready:
+        break;
+    case State::authenticating:
+        LOG_WARN("Authentication timeout\n");
+        set_state(State::searching);
+        emit_event(Event::auth_error);
+        break;
+    case State::handshaking:
+        LOG_WARN("TCP connection timeout\n");
+        set_state(State::online);
+        emit_event(Event::conn_error);
+        break;
+    case State::open:
+        LOG_WARN("Socket timeout\n");
+        emit_event(Event::sock_error);
+        break;
+    case State::closing:
+        LOG_WARN("Close timeout\n");
+        set_state(State::online);
+        break;
+    default:
+        LOG_WARN("Command timeout\n");
+        emit_event(Event::timeout);
+        break;
     }
 }
+
+bool Modem::parse_urc(uint8_t *start, size_t size)
+{
+    if (size >= 12 && memcmp(start, "+CME ERROR:", 12) == 0) {
+        // +CME ERROR: %d\r\n
+        // │           │
+        // │           └ start + 12
+        // └ start
+
+        const int error = strtoul(
+                reinterpret_cast<char*>(start + 12), nullptr, 10);
+
+        LOG_ERROR("+CME ERROR: %d", error);
+        emit_error(error);
+        return true;
+    }
+    else if (size >= 7 && memcmp(start, "+CPIN: ", 7) == 0) {
+        // +CPIN: %s\r\n
+        // │      │
+        // │      └ start + 7
+        // └ start
+
+        start += 7;
+        size -= 7;
+
+        if (size >= 6 && memcmp(start, "READY\r", 6) == 0) {
+            if (status() < State::searching)
+                set_state(State::ready);
+        }
+        else if (size >= 13 && memcmp(start, "NOT INSERTED\r", 13) == 0) {
+            LOG_ERROR("SIM card is not inserted\n");
+            emit_event(Event::sim_error);
+            set_state(State::error);
+        }
+        return true;
+    }
+    else if (size >= 7 && memcmp(start, "+CFUN: ", 7) == 0) {
+
+        // +CFUN: %d\r\n
+        // │      │
+        // │      └ start + 7
+        // └ start
+
+        modem_cfun = strtoul(
+                reinterpret_cast<char*>(start + 7), nullptr, 10);
+
+        if (modem_cfun != 1) {
+            LOG_WARN("Modem offline\n");
+            set_state(State::error);
+        }
+        return true;
+    }
+    else if (size >= 12 && memcmp(start, "+PDP: DEACT\r", 12) == 0) {
+        if (status() > State::registered) {
+            set_state(State::registered);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+void Modem::parse_general(uint8_t *start, size_t size)
+{
+    if (size >= 6 && memcmp(start, "+CSQ: ", 6) == 0) {
+        // +CSQ: %d,%d\r\n
+        // │     │
+        // │     └ start + 6
+        // └ start
+
+        start += 6;
+        size -= 6;
+
+        modem_csq = strtoul(reinterpret_cast<char*>(start), nullptr, 10);
+    }
+    else if (size >= 7 && memcmp(start, "+CREG: ", 7) == 0) {
+        // +CREG: %d,%d\r\n
+        // │        │
+        // │        └ data
+        // └ start
+
+        char *data = static_cast<char*>(memchr(start, ',', size));
+        if (data != nullptr)
+            modem_creg = strtoul(data + 1, nullptr, 10);
+    }
+    else if (size >= 8 && memcmp(start, "+CGREG: ", 8) == 0) {
+        // +CGREG: %d,%d\r\n
+        // │         │
+        // │         └ data
+        // └ start
+
+        char *data = static_cast<char*>(memchr(start, ',', size));
+        if (data != nullptr)
+            modem_cgreg = strtoul(data + 1, nullptr, 10);
+    }
+    else if (size >= 8 && memcmp(start, "+CEREG: ", 8) == 0) {
+        // +CEREG: %d,%d\r\n
+        // │         │
+        // │         └ data
+        // └ start
+
+        char *data = static_cast<char*>(memchr(start, ',', size));
+        if (data != nullptr)
+            modem_cereg = strtoul(data + 1, nullptr, 10);
+    }
+    else if (size >= 8 && memcmp(start, "+CGATT: ", 8) == 0) {
+        // +CGATT: %d\r\n
+        // │       │
+        // │       └ start + 8
+        // └ start
+
+        start += 8;
+        size -= 8;
+
+        modem_cgatt = strtoul(reinterpret_cast<char*>(start), nullptr, 10);
+    }
+
+    bool reg = false;
+
+    if (modem_creg == 1 || modem_creg == 5)
+        reg = true;  // GSM (2G)
+
+    if (modem_cgreg == 1 || modem_cgreg == 5)
+        reg = true;  // GPRS (2G/3G)
+
+    if (modem_cereg == 1 || modem_cereg == 5)
+        reg = true; // EPS (3G/LTE)
+
+    if (modem_cgatt && reg) {
+        if (status() < State::registered) {
+            LOG_INFO("Registered\n");
+            set_state(State::registered);
+        }
+    }
+    else {
+        if (status() >= State::registered) {
+            LOG_INFO("Searching for network\n");
+            set_state(State::searching);
+        }
+    }
+}
+
+void Modem::parse_authentication(uint8_t *start, size_t size)
+{
+    /**
+     * Clear any pending 'OK' responses. We know that the authentication
+     * is successful once we get an IP address from AT+CIFSR.
+     */
+    if (size >= 3 && memcmp(start, "OK\r", 3) == 0) {
+        free_pending();
+    }
+    else if (size >= 6 && memcmp(start, "ERROR\r", 6) == 0) {
+        LOG_INFO("Authentication error\n");
+        set_state(State::registered);
+        free_pending();
+        emit_event(Event::auth_error);
+    }
+    else if (cifsr_flag) {
+        // Parse IP address from AT+CIFSR
+        unsigned int a, b, c, d;
+        char *data = reinterpret_cast<char*>(start);
+        if (sscanf(data, "%3u.%3u.%3u.%3u", &a, &b, &c, &d) == 4) {
+            // Store IP address
+            snprintf(modem_cifsr, sizeof(modem_cifsr),
+                    "%u.%u.%u.%u", a, b, c, d);
+
+            LOG_INFO("Connected to GPRS\n");
+            set_state(State::online);
+            free_pending();
+            cifsr_flag = false;
+        }
+    }
+}
+
+void Modem::parse_handshaking(uint8_t *start, size_t size)
+{
+    // Expected responses to AT+CIPSTART=...
+    if (size >= 11 && memcmp(start, "CONNECT OK\r", 11) == 0) {
+        LOG_INFO("TCP socket connected\n");
+        sock_state = SocketState::command;
+        set_state(State::open);
+        free_pending();
+    }
+    else if (size >= 16 && memcmp(start, "ALREADY CONNECT\r", 16) == 0) {
+        LOG_INFO("TCP socket reconnected\n");
+        set_state(State::open);
+        free_pending();
+    }
+    else if (size >= 13 && memcmp(start, "CONNECT FAIL\r", 13) == 0) {
+        LOG_WARN("TCP connection failed\n");
+        set_state(State::online);
+        emit_event(Event::conn_error);
+        free_pending();
+    }
+}
+
+void Modem::parse_closing(uint8_t *start, size_t size)
+{
+    // Expected responses to AT+CIPCLOSE
+    if (size >= 8 && memcmp(start, "CLOSE OK", 8) == 0) {
+        LOG_INFO("TCP socket closed\n");
+        set_state(State::online);
+        free_pending();
+    }
+    else if (size >= 6 && memcmp(start, "ERROR\r", 6) == 0) {
+        LOG_INFO("Error during close\n");
+        set_state(State::online);
+        free_pending();
+    }
+}
+
+void Modem::parse_socket(uint8_t *start, size_t size)
+{
+    switch (sock_state) {
+    case SocketState::command:
+        parse_socket_command(start, size);
+        break;
+    case SocketState::receive:
+        parse_socket_receive(start, size);
+        break;
+    case SocketState::send:
+        parse_socket_send(start, size);
+        break;
+    }
+}
+
+void Modem::parse_socket_command(uint8_t *start, size_t size)
+{
+    if (size >= 3 && memcmp(start, "OK\r", 3) == 0) {
+        free_pending();
+    }
+    else if (size >= 6 && memcmp(start, "ERROR\r", 6) == 0) {
+        LOG_INFO("Socket error\n");
+        free_pending();
+        emit_event(Event::sock_error);
+    }
+    else if (size >= 11 && memcmp(start, "TCP CLOSED\r", 11) == 0) {
+        LOG_INFO("TCP socket disconnected\n");
+
+        stop_send();
+        stop_receive();
+
+        sock_state = SocketState::command;
+        set_state(State::online);
+    }
+    else if (size >= 13 && memcmp(start, "+CIPRXGET: 4,", 13) == 0) {
+        // +CIPRXGET: 4,%d\r\nOK\r\n
+        // │            │
+        // │            └ start + 13
+        // └ start
+
+        start += 13;
+        size -= 13;
+
+        const size_t count = strtoul(
+                reinterpret_cast<char*>(start), nullptr, 10);
+
+        if (count > modem_rx_available)
+            emit_event(Event::new_data);
+
+        modem_rx_available = count;
+
+        const int rx_requested = (rx_buffer) ? (rx_size - rx_index) : 0;
+        if (rx_requested && modem_rx_available) {
+            socket_receive(rx_requested);
+        }
+    }
+    else if (size >= 13 && memcmp(start, "+CIPRXGET: 2,", 13) == 0) {
+        // +CIPRXGET: 2,%d,%d,%s\r\n%s\r\n
+        // │            │
+        // │            └ start + 13
+        // └ start
+
+        start += 13;
+        size -= 13;
+
+        modem_rx_pending = strtoul(
+                reinterpret_cast<char*>(start), nullptr, 10);
+
+        modem_rx_available -= modem_rx_pending;
+        sock_state = SocketState::receive;
+    }
+    else if (size >= 10 && memcmp(start, "+CIPSEND: ", 10) == 0) {
+        // +CIPSEND: %d\r\nOK\r\n
+        // │       │
+        // │       └ data
+        // └ start
+
+        start += 10;
+        size -= 10;
+
+        modem_tx_available = strtoul(
+                reinterpret_cast<char*>(start), nullptr, 10);
+
+        const int tx_requested = (tx_buffer) ? (tx_size - tx_index) : 0;
+        if (tx_requested && modem_tx_available) {
+            int result = socket_send(tx_buffer + tx_index, tx_requested);
+            if (result > 0)
+                sock_state = SocketState::send;
+        }
+    }
+}
+
+void Modem::parse_socket_receive(uint8_t *start, size_t size)
+{
+    size_t count = modem_rx_pending;
+    if (count > size)
+        count = size;
+
+    modem_rx_pending -= count;
+
+    if (rx_buffer && rx_index < rx_size) {
+        if (count > (rx_size - rx_index))
+            count = (rx_size - rx_index);
+
+        memcpy(rx_buffer + rx_index, start, count);
+        rx_index += count;
+
+        LOG_VERBOSE("Received %d bytes (%d)\n", count, modem_rx_available);
+
+        if (rx_index == rx_size)
+            emit_event(Event::rx_complete);
+    }
+    else {
+        LOG_VERBOSE("Discarded %d bytes (%d)\n", count, modem_rx_available);
+    }
+
+    if (modem_rx_pending == 0)
+        sock_state = SocketState::command;
+}
+
+void Modem::parse_socket_send(uint8_t *start, size_t size)
+{
+    if (size == 1 && *start == '>') {
+        // Send prompt
+        free_pending();
+    }
+    else if (size >= 3 && memcmp(start, "OK\r", 3) == 0) {
+        free_pending();
+    }
+    else if (size >= 6 && memcmp(start, "ERROR\r", 6) == 0) {
+        LOG_INFO("Socket error\n");
+        free_pending();
+        emit_event(Event::sock_error);
+    }
+    else if (size >= 8 && memcmp(start, "SEND OK\r", 8) == 0) {
+        // Response to AT+CIPSEND
+        const size_t count = pending->size();
+        tx_index += count;
+
+        LOG_VERBOSE("Sent %d bytes (%d)\n", count, tx_size - tx_index);
+
+        if (tx_index == tx_size)
+            emit_event(Event::rx_complete);
+
+        sock_state = SocketState::command;
+        free_pending();
+    }
+    else if (size >= 10 && memcmp(start, "SEND FAIL\r", 10) == 0) {
+        // Response to AT+CIPSEND
+        if (tx_index == tx_size)
+            emit_event(Event::rx_complete);
+
+        sock_state = SocketState::command;
+        emit_event(Event::sock_error);
+        free_pending();
+    }
+}
+
+void Modem::parse_callback(uint8_t *start, size_t size, void *user)
+{
+    Modem *ctx = static_cast<Modem*>(user);
+
+#if (NOVAGSM_DEBUG >= NOVAGSM_DEBUG_TRACE)
+    if(ctx->sock_state != SocketState::receive) {
+        char dbg_buffer[128];
+        size_t dbg_index = 0;
+
+        for(size_t i = 0; i < size; ++i) {
+            const char c = start[i];
+            if(c == '\n')
+                continue;
+
+            if(c == '\r') {
+                if((dbg_index + 2) >= sizeof(dbg_buffer))
+                    break;
+
+                dbg_buffer[dbg_index++] = '\\';
+                dbg_buffer[dbg_index++] = 'r';
+            }
+            else {
+                if((dbg_index + 1) >= sizeof(dbg_buffer))
+                    break;
+
+                dbg_buffer[dbg_index++] = c;
+            }
+        }
+
+        dbg_buffer[dbg_index] = '\0';
+        LOG_TRACE("%s\n", dbg_buffer);
+    }
+#endif
+
+    // Discard echo
+    if (size >= 2 && memcmp(start, "AT", 2) == 0) {
+        if (ctx->status() != State::reset) {
+            // ATE0 - disable echo
+            Command *cmd = new Command(1000, "E0");
+            if (ctx->push_command(cmd) != 0)
+                delete cmd;
+        }
+        return;
+    }
+
+    // Unsolicited Result Codes
+    if(ctx->parse_urc(start, size))
+        return;
+
+    // State specific responses
+    switch (ctx->status()) {
+    case State::authenticating:
+        ctx->parse_authentication(start, size);
+        break;
+    case State::handshaking:
+        ctx->parse_handshaking(start, size);
+        break;
+    case State::open:
+        ctx->parse_socket(start, size);
+        break;
+    case State::closing:
+        ctx->parse_closing(start, size);
+        break;
+    default:
+        if (size >= 3 && memcmp(start, "OK\r", 3) == 0) {
+            ctx->free_pending();
+        }
+        break;
+    }
+
+    // All other responses
+    ctx->parse_general(start, size);
+}
+
+} // namespace gsm

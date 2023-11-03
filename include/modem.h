@@ -2,659 +2,657 @@
  * @file modem.h
  * @brief GSM/GPRS modem driver.
  * @author Wilkins White
- * @copyright 2019-2021 Nova Dynamics LLC
+ * @copyright 2023 Nova Dynamics LLC
  */
 
 #ifndef NOVAGSM_MODEM_H_
 #define NOVAGSM_MODEM_H_
 
 #include <cstdint>
-#include <deque>
+#include <queue>
 
-/**@{*/
-/** Allows user to specify buffer size with -DGSM_BUFFER_SIZE. */
-#ifndef NOVAGSM_BUFFER_SIZE
-#define NOVAGSM_BUFFER_SIZE 556
-#endif
-/**@}*/
-
-#if NOVAGSM_BUFFER_SIZE < 256
-#warning NOVAGSM_BUFFER_SIZE must be at least 256
-#endif
+#include "command.h"
+#include "parser.h"
 
 /** Handles buffered communication through a GSM/GPRS modem. */
-namespace gsm
-{
+namespace gsm {
+
+static_assert(kBufferSize > 64);
+
+/**
+ * @brief Maximum size of socket data transfers.
+ *
+ * Each data chunk must be less than the actual buffer size to account for
+ * protocol overhead.
+ */
+constexpr size_t kSocketMax = (kBufferSize - 64);
+
+/**
+ * @brief Defines resources and callbacks used by the driver.
+ *
+ * The API expects a *non-blocking* buffered
+ * implementation, e.g. unistd or Arduino.
+ *
+ *   https://linux.die.net/man/2/read
+ *   https://linux.die.net/man/2/write
+ */
+typedef struct {
     /**
-     * @brief Maximum size of an AT command and response.
+     * @brief Read 'size' bytes into 'data' from stream.
      *
-     * This can be set with -DNOVAGSM_BUFFER_SIZE (default 556).
+     * @param [out] data - buffer to read into.
+     * @param [in] size - number of bytes to read.
+     * @return number of bytes read.
      */
-    constexpr int kBufferSize = (NOVAGSM_BUFFER_SIZE);
+    int (*read)(void *data, size_t size);
 
     /**
-     * @brief Maximum size of socket data transfers.
+     * @brief Write 'size' bytes from 'data' to stream.
      *
-     * Each data chunk must be less than the actual buffer size to account for
-     * protocol overhead.
+     * @param [in] data - buffer to write.
+     * @param [in] size - number of bytes to write.
+     * @return number of bytes written.
      */
-    constexpr int kSocketMax = (kBufferSize - 64);
-
-    /** How long to wait for a command response. */
-    constexpr int kDefaultTimeout = 200;
+    int (*write)(const void *data, size_t size);
 
     /**
-     * @brief Defines resources and callbacks used by the driver.
+     * @brief Returns number of milliseconds elapsed since program start.
+     */
+    uint32_t (*millis)();
+} context_t;
+
+/**
+ * @brief State of the modem.
+ * @see set_state_callback().
+ */
+enum class State {
+    reset, /**< 0x0 - Waiting for reset. */
+    ready, /**< 0x1 - Modem is ready to receive AT commands. */
+    error, /**< 0x2 - Modem is in an error state. */
+    searching, /**< 0x3 - Searching for the network. */
+    registered, /**< 0x4 - Network registers the modem. */
+    authenticating, /**< 0x5 - Attempting to establish GPRS connection. */
+    online, /**< 0x6 - Data connection active. */
+    handshaking, /**< 0x7 - Attempting to establish TCP connection. */
+    open, /**< 0x8 - TCP socket is open. */
+    closing, /**< 0x9 - TCP socket is closing. */
+};
+
+/**
+ * @brief Modem events.
+ * @see set_event_callback().
+ */
+enum class Event {
+    timeout, /**< A command timed out. */
+    sim_error, /**< There is a problem with he SIM card. */
+    auth_error, /**< An error occurred during authenticate(). */
+    conn_error, /**< An error occurred during connect(). */
+    sock_error, /**< An error occurred during a socket operation. */
+    new_data, /**< New data available for read(). */
+    rx_complete, /**< A read command has finished. */
+    tx_complete, /**< A write command has finished. */
+};
+
+/** Class representing the connection with a GSM/GPRS modem. */
+class Modem {
+public:
+    /**
+     * @brief Constructor.
      *
-     * The API expects a *non-blocking* buffered
-     * implementation, e.g. unistd or Arduino.
+     * @param [in] context - hardware specific callbacks for the driver.
+     */
+    Modem(context_t &context);
+
+    /** Destructor. */
+    ~Modem();
+
+    /**
+     * @brief Set a function to be called on state changes.
      *
-     *   https://linux.die.net/man/2/read
-     *   https://linux.die.net/man/2/write
+     * @param [in] func - function to be called.
+     * @param [in] user - pointer to be passed when 'func' is called.
      */
-    typedef struct {
-        /**
-         * @brief Common read.
-         *
-         * Read 'size' bytes into 'data' from stream.
-         *
-         * @param [out] data buffer to read into.
-         * @param [in] size number of bytes to read.
-         * @return number of bytes read.
-         */
-        int (*read)(void *data, int size);
-
-        /**
-         * @brief Common write.
-         *
-         * Write 'size' bytes from 'data' to stream.
-         *
-         * @param [in] data buffer to write.
-         * @param [in] size number of bytes to write.
-         * @return number of bytes written.
-         */
-        int (*write)(const void *data, int size);
-    } context_t;
+    void set_state_callback(
+            void (*func)(State state, void *user), void *user = nullptr);
 
     /**
-     * @brief State of the modem.
-     * @see set_state_callback().
+     * @brief Set a function to be called on a modem event.
+     *
+     * @param [in] func - function to be called.
+     * @param [in] user - pointer to be passed when 'func' is called.
      */
-    enum class State {
-        reset,          /**< 0x0 - Reset pending. */
-        probe,          /**< 0x1 - Waiting for device. */
-        init,           /**< 0x2 - Modem is initializing. */
-        offline,        /**< 0x3 - Low power mode. */
-        locked,         /**< 0x4 - SIM is locked. */
-        searching,      /**< 0x5 - Searching for the network. */
-        registered,     /**< 0x6 - Network registers the modem. */
-        authenticating, /**< 0x7 - Attempting to establish GPRS connection. */
-        ready,          /**< 0x8 - Data connection active. */
-        handshaking,    /**< 0x9 - Attempting to establish TCP connection. */
-        open,           /**< 0xA - TCP socket is open. */
-        closing,        /**< 0xB - TCP socket is closing. */
-    };
+    void set_event_callback(
+            void (*func)(Event event, void *user), void *user = nullptr);
 
     /**
-     * @brief Modem events.
-     * @see set_event_callback().
+     * @brief Set a function to be called on a modem error (+CME ERROR).
+     *
+     * @param [in] func - function to be called.
+     * @param [in] user - pointer to be passed when 'func' is called.
      */
-    enum class Event {
-        timeout,            /**< A command timed out. */
-        auth_error,         /**< An error occured during authenticate(). */
-        conn_error,         /**< An error occured during connect(). */
-        new_data,           /**< New data available for read(). */
-        rx_complete,        /**< A read command has finished. */
-        rx_stopped,         /**< A read command was stopped. */
-        rx_error,           /**< A read command failed. */
-        tx_complete,        /**< A write command has finished. */
-        tx_stopped,         /**< A write command was stopped. */
-        tx_error,           /**< A write command failed. */
-    };
-
-    /** Class representing the connection with a GSM/GPRS modem. */
-    class Modem {
-        public:
-            /**
-             * @brief Constructor.
-             * @param [in] context hardware specific callbacks for the driver.
-             * @param [in] mode preferred mode selection (AT+CNMP).
-             */
-            Modem(context_t *context, int mode=38)
-                : ctx_(context), mode_(mode) {};
-
-            /** Destructor. */
-            ~Modem();
-
-            /**
-             * @brief Set a function to be called on state changes.
-             * @param [in] func function to be called.
-             * @param [in] user pointer to be passed when 'func' is called.
-             */
-            void set_state_callback(
-                void (*func)(State state, void *user), void *user=nullptr);
-
-            /**
-             * @brief Set a function to be called on a modem event.
-             * @param [in] func function to be called.
-             * @param [in] user pointer to be passed when 'func' is called.
-             */
-            void set_event_callback(
-                void (*func)(Event event, void *user), void *user=nullptr);
-
-            /**
-             * @brief Set a function to be called on a modem error (+CME ERROR).
-             * @param [in] func function to be called.
-             * @param [in] user pointer to be passed when 'func' is called.
-             */
-            void set_error_callback(
-                void (*func)(int error, void *user), void *user=nullptr);
-
-            /**
-             * @brief Handle communication with the modem.
-             *
-             * The process method handles communication with the modem and
-             * controls the device state. If there is not a command
-             * already awaiting a response then the next command in the buffer
-             * is sent. Responses are handled based on the gsm::State.
-             *
-             * @param [in] delta_us the number of microseconds that have
-             * elapsed since the last call to process.
-             */
-            void process(int delta_us);
-
-            /** Re-initialize the driver state. */
-            void reinit();
-
-            /**
-             * @brief Reset the modem (+CFUN=1,1).
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int reset();
-
-            /**
-             * @brief Enter low power mode (+CFUN=0).
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int disable();
-
-            /**
-             * @brief Configure the SIM card PIN.
-             * @param [in] pin SIM card pin
-             * @return -EINVAL if inputs are null.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int unlock(const char *pin);
-
-            /**
-             * @brief Configure the GPRS context.
-             *
-             * @param [in] apn access point name.
-             * @return -EINVAL if 'apn' is null or larger than 63 bytes.
-             * @return -ENODEV if the device is not responsive.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int configure(const char *apn);
-
-            /**
-             * @brief Connect to GPRS.
-             *
-             * @param [in] apn access point name.
-             * @param [in] user access point user name.
-             * @param [in] pwd access point password.
-             * @return -EINVAL if the GPRS context has not been configured.
-             * @return -ENODEV if the device is not responsive.
-             * @return -ENETUNREACH if the network is not available.
-             * @return -EALREADY if authentication is already in progress.
-             * @return -EBUSY if the socket is open.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int authenticate(
-                    const char *apn,
-                    const char *user = nullptr,
-                    const char *pwd = nullptr);
-
-            /**
-             * @brief Open a TCP socket.
-             *
-             * Must be in State::ready, transitions to State::open.
-             *
-             * @param [in] host server ip address.
-             * @param [in] port server port number.
-             * @return -EINVAL if inputs are null.
-             * @return -ENODEV if the device is not responsive.
-             * @return -ENETUNREACH if the network is not available.
-             * @return -ENOTCONN if GPRS is not connected.
-             * @return -EALREADY if handshaking is already in progress.
-             * @return -EADDRINUSE if a socket is already open.
-             * @return -EBUSY disconnecting previous socket - try again.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int connect(const char *host, int port);
-
-            /**
-             * @brief Close TCP socket.
-             *
-             * @return -ENODEV if the device is not responsive.
-             * @return -ENETUNREACH if the network is not available.
-             * @return -ENOTSOCK if a connection is not established.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int disconnect();
-
-            /**
-             * @brief Start receiving data.
-             *
-             * Asynchronously receives up to 'size' bytes from the modem
-             * and stores it in the buffer pointed to by 'data'.
-             *
-             * Function returns immediately and calls the socket
-             * callback with the result.
-             *
-             * @param [out] data buffer to read into.
-             * @param [in] size number of bytes to read.
-             */
-            void receive(void *data, int size);
-
-            /**
-             * @brief Cancel an ongoing receive() call.
-             * @warning if transfer is in progress the data will be lost.
-             */
-            void stop_receive();
-
-            /**
-             * @brief Stage bytes to the tx ring buffer.
-             * @param [in] data buffer to write.
-             * @param [in] size number of bytes to write.
-             */
-            void send(const void *data, int size);
-
-            /**
-             * @brief Cancel an ongoing send() call.
-             * @warning if transfer is in progress '\0' will be sent for the
-             * remaining bytes.
-             */
-            void stop_send();
-
-            /** Number of bytes available to receive(). */
-            inline int rx_available()
-            {
-                return rx_available_;
-            }
-
-            /**
-             * @brief Number of bytes available to send().
-             *
-             * Buffers larger than this will be broken up and sent over
-             * multiple transfers.
-             */
-            inline int tx_available()
-            {
-                return tx_available_;
-            }
-
-            /**
-             * @brief Poll the status of the last receive() call.
-             * @return true if receive is in progress.
-             */
-            inline bool rx_busy()
-            {
-                return connected() && rx_buffer_ && rx_count_ < rx_size_;
-            }
-
-            /**
-             * @brief Poll the status of the last send() call.
-             * @return true if send is in progress.
-             */
-            inline bool tx_busy()
-            {
-                return connected() && tx_buffer_ && tx_count_ < tx_size_;
-            }
-
-            /**
-             * @brief Poll the status of the last receive() call
-             * @return number of bytes received or -1 if not receiving.
-             */
-            inline int rx_count()
-            {
-                return (rx_buffer_) ? rx_count_ : -1;
-            }
-
-            /**
-             * @brief Poll the status of the last send() call
-             * @return number of bytes sent or -1 if not sending.
-             */
-            inline int tx_count()
-            {
-                return (tx_buffer_) ? tx_count_ : -1;
-            }
-
-            /** Return the device state. */
-            inline State status()
-            {
-                return device_state_;
-            }
-
-            /** Returns true if the modem is responsive. */
-            inline bool detected()
-            {
-                return device_state_ > State::probe;
-            }
-
-            /** Returns true if the modem is registered on the network. */
-            inline bool registered()
-            {
-                return device_state_ >= State::registered;
-            }
-
-            /** Returns true if a connection attempt is in progress. */
-            inline bool authenticating()
-            {
-                return device_state_ == State::authenticating;
-            }
-
-            /** Returns true if the modem is ready for connect(). */
-            inline bool ready()
-            {
-                return device_state_ == State::ready;
-            }
-
-            /** Returns true if a connection attempt is in progress. */
-            inline bool handshaking()
-            {
-                return device_state_ == State::handshaking;
-            }
-
-            /** Returns true if the socket is being closed. */
-            inline bool closing()
-            {
-                return device_state_ == State::closing;
-            }
-
-           /** Returns true if a TCP connection is established. */
-            inline bool connected()
-            {
-                return device_state_ == State::open;
-            }
-
-           /**
-            * @brief Returns the value reported by AT+CSQ.
-            * @warning value is encoded. Refer to modem documentation for
-            * actual rssi value.
-            */
-           inline int signal()
-           {
-               return signal_;
-           }
-
-           /** Returns the value reported by AT+CREG? */
-           inline int creg()
-           {
-               return creg_;
-           }
-
-           /** Returns the value reported by AT+CGREG? */
-           inline int cgreg()
-           {
-               return cgreg_;
-           }
-
-          /** Returns the value reported by AT+CGREG? */
-          inline int cereg()
-          {
-              return cereg_;
-          }
-
-        private:
-            class Command;
-
-            /** State of data transmission when socket is open. */
-            enum class SocketState {
-                idle,   /**< Socket idle. */
-                rtr,    /**< Socket request to receive. */
-                rts,    /**< Socket request to send. */
-                cts,    /**< Socket clear to send. */
-            };
-
-            /**
-             * @brief Update the device state and call user function.
-             * @param [in] state new device state.
-             */
-            void set_state(State state);
-
-            /** Emit an event. */
-            void emit_event(Event event);
-
-            /** Free the pending command. */
-            void free_pending();
-
-            /** Returns true if the response buffer is properly terminated. */
-            bool response_complete();
-
-            /**
-             * @brief Add a command to the end of the queue.
-             * @param [in] cmd Command object.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int push_command(Command *cmd);
-
-            /**
-             * @brief Add a command to the front of the queue.
-             * @param [in] cmd Command object.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int shift_command(Command *cmd);
-
-            /**
-             * @brief Send a polling message based on the modem's state.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int poll_modem();
-
-            /**
-             * @brief Read data from the socket.
-             * @return -EBUSY if socket is not idle.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int socket_receive(int count);
-
-            /**
-             * @brief Write data to the socket.
-             * @return -EBUSY if socket is not idle.
-             * @return -ENOMEM if memory allocation failed.
-             * @return -EMSGSIZE if buffer size exceeded.
-             */
-            int socket_send(int count);
-
-            /** Handle a command timeout. */
-            void process_timeout();
-
-            /** Handle device detection. */
-            void process_probe();
-
-            /** Handle general command responses. */
-            void process_general();
-
-            /** Handle authenticate(). */
-            void process_authentication();
-
-            /** Handle connect(). */
-            void process_handshaking();
-
-            /** Handle disconnect(). */
-            void process_close();
-
-            /** Handle socket. */
-            void process_socket();
-
-            /** Socket is idle. */
-            void socket_state_idle();
-
-            /** Socket data is available and being read. */
-            void socket_state_rtr();
-
-            /** A buffer is ready to be sent through the socket. */
-            void socket_state_rts();
-
-            /** Data is being written from the send buffer. */
-            void socket_state_cts();
-
-            /** Driver operating context. */
-            context_t const *ctx_;
-
-            /** Mode for AT+CNMP. */
-            int mode_ = 0;
-
-            /** User function to call on state change event. */
-            void (*state_cb_)(State state, void *user) = nullptr;
-
-            /** User private data for state change callback. */
-            void *state_cb_user_ = nullptr;
-
-            /** User function to call on event. */
-            void (*event_cb_)(Event event, void *user) = nullptr;
-
-            /** User private data for event callback. */
-            void *event_cb_user_ = nullptr;
-
-            /** User function to call on +CME ERROR. */
-            void (*error_cb_)(int error, void *user) = nullptr;
-
-            /** User private data for error callback. */
-            void *error_cb_user_ = nullptr;
-
-            /** Signal value reported by AT+CSQ. */
-            int signal_ = 99;
-
-            /** Registration value reported by AT+CREG? */
-            int creg_ = 0;
-
-            /** Registration value reported by AT+CGREG? */
-            int cgreg_ = 0;
-
-            /** Registration value reported by AT+CEREG? */
-            int cereg_ = 0;
-
-            /** GPRS service status reported by AT+CGATT? */
-            int service_ = 0;
-
-            /** Local IP address reported by AT+CIFSR. */
-            char ip_address_[32] = {};
-
-            /** Command queue. */
-            std::deque<Command*> cmd_buffer_;
-
-            /** Most recent command awaiting response. */
-            Command *pending_ = nullptr;
-
-            /** Tracks the time elapsed since initialization (ms). */
-            unsigned int elapsed_us_ = 0;
-
-            /** Time the pending command will expire. */
-            unsigned int command_timer_ = 0;
-
-            /** Time of the next state update. */
-            unsigned int update_timer_ = 0;
-
-            /** State of the modem. */
-            State device_state_ = State::probe;
-
-            /** Next state of the modem. */
-            State next_state_ = State::probe;
-
-            /** State of data transmission through the socket. */
-            SocketState sock_state_ = SocketState::idle;
-
-            /** Modem response buffer. */
-            uint8_t response_[kBufferSize] = {};
-
-            /** Size of modem's response. */
-            int response_size_ = 0;
-
-            /** User buffer to send from. */
-            const uint8_t *tx_buffer_ = nullptr;
-
-            /** Size of 'tx_buffer_'. */
-            int tx_size_ = 0;
-
-            /** Number of bytes that have been read from 'tx_buffer_'. */
-            int tx_count_ = 0;
-
-            /** Tracks the space in the modem's tx buffer. */
-            int tx_available_ = 0;
-
-            /** Number of bytes staged by rts. */
-            int tx_pending_ = 0;
-
-            /** User buffer to receive into. */
-            uint8_t *rx_buffer_ = nullptr;
-
-            /** Size of 'rx_buffer_'. */
-            int rx_size_ = 0;
-
-            /** Number of bytes that have been written to 'rx_buffer_'. */
-            int rx_count_ = 0;
-
-            /** Tracks the number of bytes in the modem's rx buffer. */
-            int rx_available_ = 0;
-    };
-
-    /** Modem command object. */
-    class Modem::Command
+    void set_error_callback(
+            void (*func)(int error, void *user), void *user = nullptr);
+
+    /**
+     * @brief Handle communication with the modem.
+     *
+     * The process method handles communication with the modem and
+     * controls the device state. If there is not a command
+     * already awaiting a response then the next command in the buffer
+     * is sent. Responses are handled based on the gsm::State.
+     */
+    void process();
+
+    /** Re-initialize the driver state. */
+    void reinit();
+
+    /**
+     * @brief Reset the modem (+CFUN=1,1).
+     *
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int reset();
+
+    /**
+     * @brief Configure the GPRS context.
+     *
+     * Must be in State::ready, transitions to State::registered.
+     *
+     * @param [in] apn - access point name.
+     * @param [in] mode - CNMP mode (default LTE)
+     * @return -EINVAL if 'apn' is null or larger than 63 bytes.
+     * @return -ENODEV if the device is not responsive.
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int configure(const char *apn, uint8_t mode = 38);
+
+    /**
+     * @brief Connect to GPRS.
+     *
+     * Must be in State::registered, transitions to State::online.
+     *
+     * @param [in] apn - access point name.
+     * @param [in] user - access point user name.
+     * @param [in] pwd - access point password.
+     * @return -EINVAL if the GPRS context has not been configured.
+     * @return -ENODEV if the device is not responsive.
+     * @return -ENETUNREACH if the network is not available.
+     * @return -EALREADY if authentication is already in progress.
+     * @return -EBUSY if the socket is open.
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int authenticate(
+            const char *apn,
+            const char *user = nullptr,
+            const char *pwd = nullptr);
+
+    /**
+     * @brief Open a TCP socket.
+     *
+     * Must be in State::online, transitions to State::open.
+     *
+     * @param [in] host - server ip address.
+     * @param [in] port - server port number.
+     * @return -EINVAL if inputs are null.
+     * @return -ENODEV if the device is not responsive.
+     * @return -ENETUNREACH if the network is not available.
+     * @return -ENOTCONN if GPRS is not connected.
+     * @return -EALREADY if handshaking is already in progress.
+     * @return -EADDRINUSE if a socket is already open.
+     * @return -EBUSY disconnecting previous socket - try again.
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int connect(const char *host, unsigned int port);
+
+    /**
+     * @brief Close TCP socket.
+     *
+     * @param [in] quick - if true, then close immediately.
+     * @return -ENODEV if the device is not responsive.
+     * @return -ENETUNREACH if the network is not available.
+     * @return -ENOTSOCK if a connection is not established.
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int close(bool quick = false);
+
+    /**
+     * @brief Start receiving data.
+     *
+     * Asynchronously receives up to 'size' bytes from the modem
+     * and stores it in the buffer pointed to by 'data'.
+     *
+     * Function returns immediately and calls the socket
+     * callback with the result.
+     *
+     * @param [out] data - buffer to read into.
+     * @param [in] size - number of bytes to read.
+     */
+    void receive(void *data, size_t size);
+
+    /**
+     * @brief Cancel an ongoing receive() call.
+     *
+     * @warning if transfer is in progress the data will be lost.
+     */
+    void stop_receive();
+
+    /**
+     * @brief Stage bytes to the tx ring buffer.
+     *
+     * @param [in] data - buffer to write.
+     * @param [in] size - number of bytes to write.
+     */
+    void send(const void *data, size_t size);
+
+    /**
+     * @brief Cancel an ongoing send() call.
+     *
+     * @warning if transfer is in progress '\0' will be sent for the
+     * remaining bytes.
+     */
+    void stop_send();
+
+    /**
+     * @brief The number of bytes available to receive().
+     */
+    inline int rx_available() const
     {
-        public:
-            /**
-             * @brief Destructor.
-             * Frees data buffer.
-             */
-            ~Command();
+        return modem_rx_available;
+    }
 
-            /**
-             * @brief Create a new Command object.
-             * @param [in] timeout maximum time to wait for a response (ms).
-             * @param [in] command standard c format string.
-             * @param [in] ... arguments for command formatting.
-             */
-            static Command *create(int timeout, const char *command, ...);
+    /**
+     * @brief Number of bytes available to send().
+     *
+     * Buffers larger than this will be broken up and sent over
+     * multiple transfers.
+     */
+    inline int tx_available() const
+    {
+        return modem_tx_available;
+    }
 
-            /** Returns the timeout value (ms). */
-            int timeout() {
-                return timeout_;
-            }
+    /**
+     * @brief Poll the status of the last receive() call.
+     *
+     * @return true if receive is in progress.
+     */
+    inline bool rx_busy() const
+    {
+        return connected() && rx_buffer && rx_index < rx_size;
+    }
 
-            /** Returns the size of the payload string. */
-            int size() {
-                return size_;
-            }
+    /**
+     * @brief Poll the status of the last send() call.
+     *
+     * @return true if send is in progress.
+     */
+    inline bool tx_busy() const
+    {
+        return connected() && tx_buffer && tx_index < tx_size;
+    }
 
-            /** Returns the payload buffer. */
-            uint8_t *data() {
-                return data_;
-            }
+    /**
+     * @brief Poll the status of the last receive() call
+     *
+     * @return number of bytes received.
+     */
+    inline size_t rx_count() const
+    {
+        return (rx_buffer) ? rx_index : 0;
+    }
 
-        private:
-            /**
-             * @brief Constructor.
-             * @param [in] timeout maximum time to wait for a response (ms).
-             * @param [in] data pre-allocated data buffer.
-             * @param [in] size length of 'data' buffer.
-             */
-             Command(int timeout, uint8_t *data, int size)
-                 : timeout_(timeout), size_(size), data_(data) {};
+    /**
+     * @brief Poll the status of the last send() call
+     *
+     * @return number of bytes sent.
+     */
+    inline size_t tx_count() const
+    {
+        return (tx_buffer) ? tx_index : 0;
+    }
 
-            int timeout_ = 0;           /**< Response timeout. */
-            int size_ = 0;              /**< Size of payload. */
-            uint8_t *data_ = nullptr;   /**< Payload buffer. */
+    /**
+     * @brief Return the device state.
+     */
+    inline State status() const
+    {
+        return next_state;
+    }
+
+    /**
+     * @brief Returns true if the modem is registered on the network.
+     */
+    inline bool registered() const
+    {
+        return status() >= State::registered;
+    }
+
+    /**
+     * @brief Returns true if authentication is in progress.
+     */
+    inline bool authenticating() const
+    {
+        return status() == State::authenticating;
+    }
+
+    /**
+     * @brief Returns true if the modem is online.
+     */
+    inline bool online() const
+    {
+        return status() >= State::online;
+    }
+
+    /**
+     * @brief Returns true if a connection attempt is in progress.
+     */
+    inline bool handshaking() const
+    {
+        return status() == State::handshaking;
+    }
+
+    /**
+     * @brief Returns true if the connection is being closed.
+     */
+    inline bool closing() const
+    {
+        return status() == State::closing;
+    }
+
+    /**
+     * @brief Returns true if a TCP connection is established.
+     */
+    inline bool connected() const
+    {
+        return status() == State::open;
+    }
+
+    /**
+     * @brief Returns the value reported by [AT+CSQ].
+     */
+    inline uint8_t csq() const
+    {
+        return modem_csq;
+    }
+
+    /**
+     * @brief Returns the value reported by [AT+CREG?]
+     */
+    inline uint8_t creg() const
+    {
+        return modem_creg;
+    }
+
+    /**
+     * @brief Returns the value reported by [AT+CGREG?]
+     */
+    inline uint8_t cgreg() const
+    {
+        return modem_cgreg;
+    }
+
+    /**
+     * @brief Returns the value reported by [AT+CGREG?]
+     */
+    inline uint8_t cereg() const
+    {
+        return modem_cereg;
+    }
+
+    /**
+     * @brief Returns the value reported by [AT+CGATT?]
+     */
+    inline uint8_t cgatt() const
+    {
+        return modem_cgatt;
+    }
+
+    /**
+     * @brief Returns the value reported by [AT+CIFSR]
+     */
+    inline const char *cifsr() const
+    {
+        return modem_cifsr;
+    }
+
+private:
+    /** State of data transmission when socket is open. */
+    enum class SocketState {
+        command, /**< AT command state. */
+        receive, /**< Receiving data. */
+        send, /**< Sending data. */
     };
-}
 
-#endif /* NOVAGSM_MODEM_H_ */
+    /**
+     * @brief Process a completed packet.
+     *
+     * @param [in] data - parsed packet.
+     * @param [in] size - size of the parsed packet.
+     * @param [in] user - private data.
+     */
+    static void parse_callback(uint8_t *data, size_t size, void *user);
+
+    /**
+     * @brief Update the device state and call user function.
+     * @param [in] state - new device state.
+     */
+    void set_state(State state);
+
+    /** Free the pending command. */
+    void free_pending();
+
+    /**
+     * @brief Add a command to the end of the queue.
+     *
+     * @param [in] cmd - Command object.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int push_command(Command *cmd);
+
+    /**
+     * @brief Send a polling message based on the modem's state.
+     *
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int poll_modem();
+
+    /**
+     * @brief Read data from the socket.
+     *
+     * @param [in] count - the number of bytes to send.
+     * @return -EBUSY if socket is not idle.
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int socket_receive(size_t count);
+
+    /**
+     * @brief Write data to the socket.
+     *
+     * @param [in] data - buffer to send.
+     * @param [in] count - the number of bytes to send.
+     * @return -EBUSY if socket is not idle.
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int socket_send(const uint8_t *data, size_t count);
+
+    /** Handle a command timeout. */
+    void handle_timeout();
+
+    /** Handle unsolicited result codes. */
+    bool parse_urc(uint8_t *start, size_t size);
+
+    /** Handle general command responses. */
+    void parse_general(uint8_t *start, size_t size);
+
+    /** Handle authenticate(). */
+    void parse_authentication(uint8_t *start, size_t size);
+
+    /** Handle connect(). */
+    void parse_handshaking(uint8_t *start, size_t size);
+
+    /** Handle disconnect(). */
+    void parse_closing(uint8_t *start, size_t size);
+
+    /** Handle socket. */
+    void parse_socket(uint8_t *start, size_t size);
+
+    /** Socket is idle. */
+    void parse_socket_command(uint8_t *start, size_t size);
+
+    /** Socket data is being read into the receive buffer. */
+    void parse_socket_receive(uint8_t *start, size_t size);
+
+    /** Data is being written from the send buffer. */
+    void parse_socket_send(uint8_t *start, size_t size);
+
+    /** Invoke the state callback .*/
+    inline void emit_state(State state)
+    {
+        if (state_cb)
+            state_cb(state, state_cb_user);
+
+    }
+
+    /** Invoke the event callback. */
+    inline void emit_event(Event event)
+    {
+        if (event_cb)
+            event_cb(event, event_cb_user);
+    }
+
+    /** Invoke the error callback. */
+    inline void emit_error(int code)
+    {
+        if (error_cb)
+            error_cb(code, event_cb_user);
+    }
+
+    inline uint32_t millis() const
+    {
+        return ctx.millis();
+    }
+
+    inline int read(void *data, size_t size) const
+    {
+        return ctx.read(data, size);
+    }
+
+    inline int write(const void *data, size_t size) const
+    {
+        return ctx.write(data, size);
+    }
+
+    /** Driver operating context. */
+    const context_t &ctx;
+
+    /** User function to call on state change event. */
+    void (*state_cb)(State state, void *user) = nullptr;
+
+    /** User private data for state change callback. */
+    void *state_cb_user = nullptr;
+
+    /** User function to call on event. */
+    void (*event_cb)(Event event, void *user) = nullptr;
+
+    /** User private data for event callback. */
+    void *event_cb_user = nullptr;
+
+    /** User function to call on +CME ERROR. */
+    void (*error_cb)(int error, void *user) = nullptr;
+
+    /** User private data for error callback. */
+    void *error_cb_user = nullptr;
+
+    /** Receive buffer. */
+    uint8_t buffer[kBufferSize];
+
+    /** Modem functional state reported by AT+CFUN? */
+    uint8_t modem_cfun = 0;
+
+    /** Signal value reported by AT+CSQ. */
+    uint8_t modem_csq = 99;
+
+    /** Registration value reported by AT+CREG? */
+    uint8_t modem_creg = 0;
+
+    /** Registration value reported by AT+CGREG? */
+    uint8_t modem_cgreg = 0;
+
+    /** Registration value reported by AT+CEREG? */
+    uint8_t modem_cereg = 0;
+
+    /** GPRS service status reported by AT+CGATT? */
+    uint8_t modem_cgatt = 0;
+
+    /** Local IP address reported by AT+CIFSR. */
+    char modem_cifsr[32];
+
+    /** The next valid line will be the CIFSR results. */
+    bool cifsr_flag = false;
+
+    /** Command queue. */
+    std::queue<Command*> cmd_buffer;
+
+    /** Most recent command awaiting response. */
+    Command *pending = nullptr;
+
+    /** Time the pending command will expire. */
+    uint32_t command_timer = 0;
+
+    /** Time of the next state update. */
+    uint32_t update_timer = 0;
+
+    /** How long to wait before sending the reset command. */
+    uint32_t reset_timer = 0;
+
+    /** State of the modem. */
+    State device_state = State::reset;
+
+    /** Next state of the modem. */
+    State next_state = State::reset;
+
+    /** State of data transmission through the socket. */
+    SocketState sock_state = SocketState::command;
+
+    /** Packet parser. */
+    Parser parser;
+
+    /** User buffer to send from. */
+    const uint8_t *tx_buffer = nullptr;
+
+    /** Size of 'tx_buffer'. */
+    size_t tx_size = 0;
+
+    /** Number of bytes that have been read from 'tx_buffer'. */
+    size_t tx_index = 0;
+
+    /** Tracks the space in the modem's tx buffer. */
+    size_t modem_tx_available = 0;
+
+    /** User buffer to receive into. */
+    uint8_t *rx_buffer = nullptr;
+
+    /** Size of 'rx_buffer'. */
+    size_t rx_size = 0;
+
+    /** Number of bytes that have been written to 'rx_buffer'. */
+    size_t rx_index = 0;
+
+    /** Tracks the number of bytes in the modem's rx buffer. */
+    size_t modem_rx_available = 0;
+
+    /** Number of bytes stage by rtr. */
+    size_t modem_rx_pending = 0;
+};
+
+} // namespace gsm
+
+#endif // NOVAGSM_MODEM_H_
