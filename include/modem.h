@@ -145,9 +145,6 @@ public:
 
     /**
      * @brief Reset the modem (+CFUN=1,1).
-     *
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int reset();
 
@@ -160,8 +157,6 @@ public:
      * @param [in] mode - CNMP mode (default LTE)
      * @return -EINVAL if 'apn' is null or larger than 63 bytes.
      * @return -ENODEV if the device is not responsive.
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int configure(const char *apn, uint8_t mode = 38);
 
@@ -178,8 +173,6 @@ public:
      * @return -ENETUNREACH if the network is not available.
      * @return -EALREADY if authentication is already in progress.
      * @return -EBUSY if the socket is open.
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int authenticate(
             const char *apn,
@@ -196,12 +189,9 @@ public:
      * @return -EINVAL if inputs are null.
      * @return -ENODEV if the device is not responsive.
      * @return -ENETUNREACH if the network is not available.
-     * @return -ENOTCONN if GPRS is not connected.
      * @return -EALREADY if handshaking is already in progress.
-     * @return -EADDRINUSE if a socket is already open.
+     * @return -EISCONN if a socket is already open.
      * @return -EBUSY disconnecting previous socket - try again.
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int connect(const char *host, unsigned int port);
 
@@ -209,11 +199,7 @@ public:
      * @brief Close TCP socket.
      *
      * @param [in] quick - if true, then close immediately.
-     * @return -ENODEV if the device is not responsive.
-     * @return -ENETUNREACH if the network is not available.
-     * @return -ENOTSOCK if a connection is not established.
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
+     * @return -ENOTCONN if a connection is not established.
      */
     int close(bool quick = false);
 
@@ -228,8 +214,9 @@ public:
      *
      * @param [out] data - buffer to read into.
      * @param [in] size - number of bytes to read.
+     * @return -ENOTCONN if a connection is not established.
      */
-    void receive(void *data, size_t size);
+    int receive(void *data, size_t size);
 
     /**
      * @brief Cancel an ongoing receive() call.
@@ -239,12 +226,16 @@ public:
     void stop_receive();
 
     /**
-     * @brief Stage bytes to the tx ring buffer.
+     * @brief Start sending data.
+     *
+     * Asynchronously sends data to the modem. The buffer pointed to by 'data'
+     * must remain allocated until the send is complete.
      *
      * @param [in] data - buffer to write.
      * @param [in] size - number of bytes to write.
+     * @return -ENOTCONN if a connection is not established.
      */
-    void send(const void *data, size_t size);
+    int send(const void *data, size_t size);
 
     /**
      * @brief Cancel an ongoing send() call.
@@ -418,13 +409,6 @@ public:
     }
 
 private:
-    /** State of data transmission when socket is open. */
-    enum class SocketState {
-        command, /**< AT command state. */
-        receive, /**< Receiving data. */
-        send, /**< Sending data. */
-    };
-
     /**
      * @brief Process a completed packet.
      *
@@ -447,23 +431,16 @@ private:
      * @brief Add a command to the end of the queue.
      *
      * @param [in] cmd - Command object.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int push_command(Command *cmd);
 
     /**
      * @brief Send a polling message based on the modem's state.
-     *
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int poll_modem();
 
     /**
      * @brief Send a polling message based on the socket state.
-     *
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int poll_socket();
 
@@ -471,9 +448,6 @@ private:
      * @brief Read data from the socket.
      *
      * @param [in] count - the number of bytes to send.
-     * @return -EBUSY if socket is not idle.
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int socket_receive(size_t count);
 
@@ -482,9 +456,6 @@ private:
      *
      * @param [in] data - buffer to send.
      * @param [in] count - the number of bytes to send.
-     * @return -EBUSY if socket is not idle.
-     * @return -ENOMEM if memory allocation failed.
-     * @return -EMSGSIZE if buffer size exceeded.
      */
     int socket_send(const uint8_t *data, size_t count);
 
@@ -603,6 +574,12 @@ private:
     /** The next valid line will be the CIFSR results. */
     bool cifsr_flag = false;
 
+    /** The modem is expecting data. */
+    bool cipsend_flag = false;
+
+    /** The modem is sending data. */
+    bool ciprxget_flag = false;
+
     /** Command queue. */
     std::queue<Command*> cmd_buffer;
 
@@ -623,9 +600,6 @@ private:
 
     /** Next state of the modem. */
     State next_state = State::reset;
-
-    /** State of data transmission through the socket. */
-    SocketState sock_state = SocketState::command;
 
     /** Packet parser. */
     Parser parser;

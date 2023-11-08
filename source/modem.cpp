@@ -200,26 +200,11 @@ int Modem::reset()
 
 int Modem::configure(const char *apn, uint8_t mode)
 {
-    switch (next_state) {
-    // Invalid state, return error
-    case State::reset:
-        return -ENODEV;
-        // Continue
-    case State::ready:
-    case State::error:
-    case State::searching:
-    case State::authenticating:
-    case State::handshaking:
-    case State::open:
-    case State::closing:
-    case State::registered:
-    case State::online:
-        break;
-
-    }
-
     if (apn == nullptr)
         return -EINVAL;
+
+    if (status() == State::reset)
+        return -ENODEV;
 
     Command *cmd = new Command(5000);
     if (cmd == nullptr)
@@ -277,7 +262,7 @@ int Modem::authenticate(const char *apn, const char *user, const char *pwd)
     case State::closing:
         return -EBUSY;
 
-        // Continue
+    // Continue
     case State::registered:
     case State::online:
         break;
@@ -355,18 +340,17 @@ int Modem::connect(const char *host, unsigned int port)
     case State::ready:
     case State::error:
     case State::searching:
-        return -ENETUNREACH;
     case State::registered:
     case State::authenticating:
-        return -ENOTCONN;
+        return -ENETUNREACH;
     case State::handshaking:
         return -EALREADY;
     case State::open:
-        return -EADDRINUSE;
+        return -EISCONN;
     case State::closing:
         return -EBUSY;
 
-        // Continue
+    // Continue
     case State::online:
         break;
     }
@@ -398,26 +382,8 @@ int Modem::connect(const char *host, unsigned int port)
 
 int Modem::close(bool quick)
 {
-    switch (next_state) {
-    // Invalid state, return error
-    case State::reset:
-        return -ENODEV;
-    case State::ready:
-    case State::error:
-    case State::searching:
-        return -ENETUNREACH;
-    case State::registered:
-    case State::authenticating:
-    case State::online:
-    case State::handshaking:
-        return -ENOTSOCK;
-    case State::closing:
-        return -EALREADY;
-
-        // Continue
-    case State::open:
-        break;
-    }
+    if (!connected())
+        return -ENOTCONN;
 
     Command *cmd = nullptr;
     if (quick) {
@@ -441,34 +407,48 @@ int Modem::close(bool quick)
     return result;
 }
 
-void Modem::receive(void *data, size_t size)
+int Modem::receive(void *data, size_t size)
 {
+    if (!connected())
+        return -ENOTCONN;
+
     rx_buffer = static_cast<uint8_t*>(data);
     rx_size = size;
     rx_index = 0;
+    return 0;
 }
 
 void Modem::stop_receive()
 {
     const bool stopped = rx_busy();
-    receive(nullptr, 0);
+    rx_buffer = nullptr;
+    rx_size = 0;
+    rx_index = 0;
+
     if (stopped) {
         LOG_WARN("Receive interrupted\n");
         emit_event(Event::rx_complete);
     }
 }
 
-void Modem::send(const void *data, size_t size)
+int Modem::send(const void *data, size_t size)
 {
+    if (!connected())
+        return -ENOTCONN;
+
     tx_buffer = static_cast<const uint8_t*>(data);
     tx_size = size;
     tx_index = 0;
+    return 0;
 }
 
 void Modem::stop_send()
 {
     const bool stopped = tx_busy();
-    send(nullptr, 0);
+    tx_buffer = nullptr;
+    tx_size = 0;
+    tx_index = 0;
+
     if (stopped) {
         LOG_WARN("Send interrupted\n");
         emit_event(Event::tx_complete);
@@ -482,7 +462,11 @@ void Modem::set_state(State state)
 
 void Modem::free_pending()
 {
-    assert(pending != nullptr);
+    if (pending == nullptr) {
+        LOG_WARN("Double 'free' detected");
+        return;
+    }
+
     delete pending;
     pending = nullptr;
 }
@@ -560,15 +544,13 @@ int Modem::poll_socket()
         int result = socket_receive(rx_requested);
         if(result < 0)
             return result;
-
-        // SocketState::receive will be set when CIPRXGET returns
     }
     else if (tx_requested && modem_tx_available) {
         int result = socket_send(tx_buffer + tx_index, tx_requested);
         if (result < 0)
             return result;
 
-        sock_state = SocketState::send;
+        cipsend_flag = true;
     }
     else {
         Command *cmd = new Command(1000);
@@ -594,9 +576,6 @@ int Modem::poll_socket()
 
 int Modem::socket_receive(size_t size)
 {
-    if (sock_state != SocketState::command)
-        return -EBUSY;
-
     const size_t available = std::min(modem_rx_available, kSocketMax);
     if (size > available)
         size = available;
@@ -628,9 +607,6 @@ int Modem::socket_receive(size_t size)
 
 int Modem::socket_send(const uint8_t *data, size_t size)
 {
-    if (sock_state != SocketState::command)
-        return -EBUSY;
-
     const size_t available = std::min(modem_tx_available, kSocketMax);
     if (size > available)
         size = available;
@@ -890,7 +866,8 @@ void Modem::parse_handshaking(uint8_t *start, size_t size)
     // Expected responses to AT+CIPSTART=...
     if (size >= 11 && memcmp(start, "CONNECT OK\r", 11) == 0) {
         LOG_INFO("TCP socket connected\n");
-        sock_state = SocketState::command;
+        ciprxget_flag = false;
+        cipsend_flag = false;
         set_state(State::open);
         free_pending();
     }
@@ -924,17 +901,15 @@ void Modem::parse_closing(uint8_t *start, size_t size)
 
 void Modem::parse_socket(uint8_t *start, size_t size)
 {
-    switch (sock_state) {
-    case SocketState::command:
-        parse_socket_command(start, size);
-        break;
-    case SocketState::receive:
+    if(ciprxget_flag) {
         parse_socket_receive(start, size);
-        break;
-    case SocketState::send:
-        parse_socket_send(start, size);
-        break;
+        return;
     }
+
+    if(cipsend_flag)
+        parse_socket_send(start, size);
+
+    parse_socket_command(start, size);
 }
 
 void Modem::parse_socket_command(uint8_t *start, size_t size)
@@ -953,7 +928,6 @@ void Modem::parse_socket_command(uint8_t *start, size_t size)
         stop_send();
         stop_receive();
 
-        sock_state = SocketState::command;
         set_state(State::online);
     }
     else if (size >= 13 && memcmp(start, "+CIPRXGET: 4,", 13) == 0) {
@@ -986,7 +960,7 @@ void Modem::parse_socket_command(uint8_t *start, size_t size)
                 reinterpret_cast<char*>(start), nullptr, 10);
 
         modem_rx_available -= modem_rx_pending;
-        sock_state = SocketState::receive;
+        ciprxget_flag = true;
     }
     else if (size >= 10 && memcmp(start, "+CIPSEND: ", 10) == 0) {
         // +CIPSEND: %d\r\nOK\r\n
@@ -999,8 +973,6 @@ void Modem::parse_socket_command(uint8_t *start, size_t size)
 
         modem_tx_available = strtoul(
                 reinterpret_cast<char*>(start), nullptr, 10);
-
-
     }
 }
 
@@ -1029,7 +1001,7 @@ void Modem::parse_socket_receive(uint8_t *start, size_t size)
     }
 
     if (modem_rx_pending == 0)
-        sock_state = SocketState::command;
+        ciprxget_flag = false;
 }
 
 void Modem::parse_socket_send(uint8_t *start, size_t size)
@@ -1038,14 +1010,6 @@ void Modem::parse_socket_send(uint8_t *start, size_t size)
         // Send prompt
         free_pending();
     }
-    else if (size >= 3 && memcmp(start, "OK\r", 3) == 0) {
-        free_pending();
-    }
-    else if (size >= 6 && memcmp(start, "ERROR\r", 6) == 0) {
-        LOG_INFO("Socket error\n");
-        free_pending();
-        emit_event(Event::sock_error);
-    }
     else if (size >= 8 && memcmp(start, "SEND OK\r", 8) == 0) {
         // Response to AT+CIPSEND
         const size_t count = pending->size();
@@ -1053,15 +1017,15 @@ void Modem::parse_socket_send(uint8_t *start, size_t size)
 
         LOG_INFO("Sent %d bytes\n", count);
 
+        cipsend_flag = false;
         if (tx_index == tx_size)
             emit_event(Event::rx_complete);
 
-        sock_state = SocketState::command;
         free_pending();
     }
     else if (size >= 10 && memcmp(start, "SEND FAIL\r", 10) == 0) {
         // Response to AT+CIPSEND
-        sock_state = SocketState::command;
+        cipsend_flag = false;
         emit_event(Event::sock_error);
         free_pending();
     }
