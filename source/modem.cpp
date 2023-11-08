@@ -107,12 +107,23 @@ void Modem::process()
     }
 }
 
-void Modem::reinit()
+int Modem::reset()
 {
     // Clear any queued commands
     while (cmd_buffer.size() > 0) {
         delete cmd_buffer.front();
         cmd_buffer.pop();
+    }
+
+    // AT+CFUN=1,1 - reset phone module
+    Command *cmd = new Command(1000, "+CFUN=1,1");
+    if (cmd == nullptr)
+        return -ENOMEM;
+
+    int result = push_command(cmd);
+    if (result) {
+        delete cmd;
+        return result;
     }
 
     // Reset cached values
@@ -130,26 +141,6 @@ void Modem::reinit()
 
     modem_rx_available = 0;
     modem_tx_available = 0;
-
-    // Reset state
-    if (status() != State::reset)
-        set_state(State::ready);
-}
-
-int Modem::reset()
-{
-    reinit();
-
-    // AT+CFUN=1,1 - reset phone module
-    Command *cmd = new Command(1000, "+CFUN=1,1");
-    if (cmd == nullptr)
-        return -ENOMEM;
-
-    int result = push_command(cmd);
-    if (result) {
-        delete cmd;
-        return result;
-    }
 
     LOG_INFO("Resetting modem...\n");
     set_state(State::reset);
@@ -481,22 +472,13 @@ int Modem::poll_modem()
             cmd->add("+CGATT?");
         }
         break;
-    case State::open:
-        cmd = new Command(1000);
-        if (cmd != nullptr) {
-            // AT+CSQ - signal quality report
-            cmd->add("+CSQ");
-            // AT+CIPRXGET=4 - query socket unread bytes
-            cmd->add("+CIPRXGET=4");
-            // AT+CIPSEND? - query available size of tx buffer
-            cmd->add("+CIPSEND?");
-        }
-        break;
     case State::authenticating:
         // AT+CIFSR - get local IP address
         cmd = new Command(1000, "+CIFSR");
         cifsr_flag = true;
         break;
+    case State::open:
+        return poll_socket();
     case State::handshaking:
     case State::error:
     case State::closing:
@@ -510,6 +492,47 @@ int Modem::poll_modem()
     if (result != 0) {
         delete cmd;
         return result;
+    }
+
+    return 0;
+}
+
+int Modem::poll_socket()
+{
+    const int rx_requested = (rx_buffer) ? (rx_size - rx_index) : 0;
+    const int tx_requested = (tx_buffer) ? (tx_size - tx_index) : 0;
+
+    if (rx_requested && modem_rx_available) {
+        int result = socket_receive(rx_requested);
+        if(result < 0)
+            return result;
+
+        // SocketState::receive will be set when CIPRXGET returns
+    }
+    else if (tx_requested && modem_tx_available) {
+        int result = socket_send(tx_buffer + tx_index, tx_requested);
+        if (result < 0)
+            return result;
+
+        sock_state = SocketState::send;
+    }
+    else {
+        Command *cmd = new Command(1000);
+        if (cmd == nullptr)
+            return -ENOMEM;
+
+        // AT+CSQ - signal quality report
+        cmd->add("+CSQ");
+        // AT+CIPRXGET=4 - query socket unread bytes
+        cmd->add("+CIPRXGET=4");
+        // AT+CIPSEND? - query available size of tx buffer
+        cmd->add("+CIPSEND?");
+
+        int result = push_command(cmd);
+        if (result != 0) {
+            delete cmd;
+            return result;
+        }
     }
 
     return 0;
@@ -581,7 +604,7 @@ int Modem::socket_send(const uint8_t *data, size_t size)
         std::vector<uint8_t> payload(size);
         memcpy(payload.data(), data, size);
 
-        cmd = new Command(645000, payload);
+        cmd = new Command(10000, payload);
         if (cmd == nullptr)
             return -ENOMEM;
 
@@ -895,11 +918,6 @@ void Modem::parse_socket_command(uint8_t *start, size_t size)
             emit_event(Event::new_data);
 
         modem_rx_available = count;
-
-        const int rx_requested = (rx_buffer) ? (rx_size - rx_index) : 0;
-        if (rx_requested && modem_rx_available) {
-            socket_receive(rx_requested);
-        }
     }
     else if (size >= 13 && memcmp(start, "+CIPRXGET: 2,", 13) == 0) {
         // +CIPRXGET: 2,%d,%d,%s\r\n%s\r\n
@@ -928,12 +946,7 @@ void Modem::parse_socket_command(uint8_t *start, size_t size)
         modem_tx_available = strtoul(
                 reinterpret_cast<char*>(start), nullptr, 10);
 
-        const int tx_requested = (tx_buffer) ? (tx_size - tx_index) : 0;
-        if (tx_requested && modem_tx_available) {
-            int result = socket_send(tx_buffer + tx_index, tx_requested);
-            if (result > 0)
-                sock_state = SocketState::send;
-        }
+
     }
 }
 
@@ -952,13 +965,13 @@ void Modem::parse_socket_receive(uint8_t *start, size_t size)
         memcpy(rx_buffer + rx_index, start, count);
         rx_index += count;
 
-        LOG_VERBOSE("Received %d bytes (%d)\n", count, modem_rx_available);
+        LOG_INFO("Received %d bytes\n", count);
 
         if (rx_index == rx_size)
             emit_event(Event::rx_complete);
     }
     else {
-        LOG_VERBOSE("Discarded %d bytes (%d)\n", count, modem_rx_available);
+        LOG_WARN("Discarded %d bytes\n", count);
     }
 
     if (modem_rx_pending == 0)
@@ -984,7 +997,7 @@ void Modem::parse_socket_send(uint8_t *start, size_t size)
         const size_t count = pending->size();
         tx_index += count;
 
-        LOG_VERBOSE("Sent %d bytes (%d)\n", count, tx_size - tx_index);
+        LOG_INFO("Sent %d bytes\n", count);
 
         if (tx_index == tx_size)
             emit_event(Event::rx_complete);
@@ -994,9 +1007,6 @@ void Modem::parse_socket_send(uint8_t *start, size_t size)
     }
     else if (size >= 10 && memcmp(start, "SEND FAIL\r", 10) == 0) {
         // Response to AT+CIPSEND
-        if (tx_index == tx_size)
-            emit_event(Event::rx_complete);
-
         sock_state = SocketState::command;
         emit_event(Event::sock_error);
         free_pending();

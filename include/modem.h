@@ -143,9 +143,6 @@ public:
      */
     void process();
 
-    /** Re-initialize the driver state. */
-    void reinit();
-
     /**
      * @brief Reset the modem (+CFUN=1,1).
      *
@@ -461,6 +458,14 @@ private:
      * @return -EMSGSIZE if buffer size exceeded.
      */
     int poll_modem();
+
+    /**
+     * @brief Send a polling message based on the socket state.
+     *
+     * @return -ENOMEM if memory allocation failed.
+     * @return -EMSGSIZE if buffer size exceeded.
+     */
+    int poll_socket();
 
     /**
      * @brief Read data from the socket.
