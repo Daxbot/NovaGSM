@@ -402,8 +402,10 @@ void Modem::stop_receive()
 {
     const bool stopped = rx_busy();
     receive(nullptr, 0);
-    if (stopped)
+    if (stopped) {
+        LOG_WARN("Receive interrupted\n");
         emit_event(Event::rx_complete);
+    }
 }
 
 void Modem::send(const void *data, size_t size)
@@ -417,8 +419,10 @@ void Modem::stop_send()
 {
     const bool stopped = tx_busy();
     send(nullptr, 0);
-    if (stopped)
+    if (stopped) {
+        LOG_WARN("Send interrupted\n");
         emit_event(Event::tx_complete);
+    }
 }
 
 void Modem::set_state(State state)
