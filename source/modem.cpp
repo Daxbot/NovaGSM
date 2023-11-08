@@ -24,6 +24,52 @@ static constexpr uint32_t kReadyTimeout = 30000;
 
 namespace gsm {
 
+#if (NOVAGSM_DEBUG >= NOVAGSM_DEBUG_TRACE)
+static void print_buffer(const uint8_t *data, size_t size)
+{
+    char buffer[kBufferSize];
+    size_t index = 0;
+
+    for(size_t i = 0; i < size; ++i) {
+        const char c = data[i];
+        if(c == '\r') {
+            // Print carriage return '\r'
+            if((index + 2) >= sizeof(buffer))
+                break;
+
+            buffer[index++] = '\\';
+            buffer[index++] = 'r';
+        }
+        else if(c == '\n') {
+            // Print newline '\n'
+            if((index + 2) >= sizeof(buffer))
+                break;
+
+            buffer[index++] = '\\';
+            buffer[index++] = 'n';
+        }
+        else if (c < ' ' || c > '~') {
+            // Print hex characters '\x00'
+            if((index + 4) >= sizeof(buffer))
+                break;
+
+            sprintf(buffer + index, "\\x%02x", c);
+            index += 4;
+        }
+        else {
+            // Print ascii characters 'A'
+            if((index + 1) >= sizeof(buffer))
+                break;
+
+            buffer[index++] = c;
+        }
+    }
+
+    buffer[index] = '\0';
+    LOG_TRACE("%s\n", buffer);
+}
+#endif
+
 Modem::Modem(context_t &context) :
         ctx(context)
 {
@@ -85,6 +131,10 @@ void Modem::process()
     else if (cmd_buffer.size() > 0) {
         pending = cmd_buffer.front();
         cmd_buffer.pop();
+
+#if (NOVAGSM_DEBUG >= NOVAGSM_DEBUG_TRACE)
+        print_buffer(pending->data(), pending->size());
+#endif
 
         // Send queued command
         write(pending->data(), pending->size());
@@ -897,8 +947,8 @@ void Modem::parse_socket_command(uint8_t *start, size_t size)
         free_pending();
         emit_event(Event::sock_error);
     }
-    else if (size >= 11 && memcmp(start, "TCP CLOSED\r", 11) == 0) {
-        LOG_INFO("TCP socket disconnected\n");
+    else if (size >= 7 && memcmp(start, "CLOSED\r", 7) == 0) {
+        LOG_INFO("TCP socket closed\n");
 
         stop_send();
         stop_receive();
@@ -1022,33 +1072,7 @@ void Modem::parse_callback(uint8_t *start, size_t size, void *user)
     Modem *ctx = static_cast<Modem*>(user);
 
 #if (NOVAGSM_DEBUG >= NOVAGSM_DEBUG_TRACE)
-    if(ctx->sock_state != SocketState::receive) {
-        char dbg_buffer[128];
-        size_t dbg_index = 0;
-
-        for(size_t i = 0; i < size; ++i) {
-            const char c = start[i];
-            if(c == '\n')
-                continue;
-
-            if(c == '\r') {
-                if((dbg_index + 2) >= sizeof(dbg_buffer))
-                    break;
-
-                dbg_buffer[dbg_index++] = '\\';
-                dbg_buffer[dbg_index++] = 'r';
-            }
-            else {
-                if((dbg_index + 1) >= sizeof(dbg_buffer))
-                    break;
-
-                dbg_buffer[dbg_index++] = c;
-            }
-        }
-
-        dbg_buffer[dbg_index] = '\0';
-        LOG_TRACE("%s\n", dbg_buffer);
-    }
+    print_buffer(start, size);
 #endif
 
     // Discard echo
