@@ -630,6 +630,9 @@ private:
 
     /** Number of bytes stage by rtr. */
     size_t modem_rx_pending = 0;
+
+    /** True if the modem responds to 'AT'. */
+    bool probe_flag = false;
 };
 
 } // namespace gsm
