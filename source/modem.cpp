@@ -194,6 +194,7 @@ int Modem::reset()
 
     LOG_INFO("Resetting modem\r\n");
     set_state(State::reset);
+    probe_flag = false;
     reset_timer = 0;
     return 0;
 }
@@ -489,9 +490,17 @@ int Modem::poll_modem()
 
     switch (status()) {
     case State::reset:
-        case State::ready:
+    case State::ready:
         cmd = new Command(1000); // AT
-        update_timer = millis() + 1000;
+        if (cmd != nullptr && probe_flag) {
+            update_timer = millis() + 1000;
+            probe_flag = false;
+
+            // AT+CFUN? - power status
+            cmd->add("+CFUN?");
+            // AT+CPIN? - SIM status
+            cmd->add("+CPIN?");
+        }
         break;
     case State::searching:
     case State::registered:
@@ -1071,6 +1080,7 @@ void Modem::parse_callback(uint8_t *start, size_t size, void *user)
     default:
         if (size >= 3 && memcmp(start, "OK\r", 3) == 0) {
             ctx->free_pending();
+            ctx->probe_flag = true;
         }
         break;
     }
