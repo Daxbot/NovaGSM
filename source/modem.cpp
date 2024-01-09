@@ -192,7 +192,7 @@ int Modem::reset()
     modem_rx_available = 0;
     modem_tx_available = 0;
 
-    LOG_INFO("Resetting modem\r\n");
+    LOG_VERBOSE("Resetting modem\r\n");
     set_state(State::reset);
     probe_flag = false;
     reset_timer = 0;
