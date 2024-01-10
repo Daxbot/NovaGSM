@@ -2,7 +2,7 @@
  * @file modem.h
  * @brief GSM/GPRS modem driver.
  * @author Wilkins White
- * @copyright 2023 Nova Dynamics LLC
+ * @copyright 2024 Nova Dynamics LLC
  */
 
 #ifndef NOVAGSM_MODEM_H_

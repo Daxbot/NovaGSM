@@ -2,7 +2,7 @@
  * @file command.h
  * @brief AT command buffer.
  * @author Wilkins White
- * @copyright 2023 Nova Dynamics LLC
+ * @copyright 2024 Nova Dynamics LLC
  */
 
 #include <cstdio>

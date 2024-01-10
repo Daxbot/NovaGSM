@@ -2,7 +2,7 @@
  * @file parser.h
  * @brief AT response packet parser.
  * @author Wilkins White
- * @copyright 2023 Nova Dynamics LLC
+ * @copyright 2024 Nova Dynamics LLC
  */
 
 #ifndef NOVAGSM_PARSER_H_

@@ -2,7 +2,7 @@
  * @file debug.cpp
  * @brief Debug printing macros.
  * @author Wilkins White
- * @copyright 2023 Nova Dynamics LLC
+ * @copyright 2024 Nova Dynamics LLC
  */
 
 #include <cstdio>

@@ -2,7 +2,7 @@
  * @file modem.cpp
  * @brief GSM/GPRS modem driver.
  * @author Wilkins White
- * @copyright 2023 Nova Dynamics LLC
+ * @copyright 2024 Nova Dynamics LLC
  */
 
 #include <cassert>
