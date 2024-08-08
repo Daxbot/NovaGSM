@@ -9,6 +9,7 @@
 #define NOVAGSM_MODEM_H_
 
 #include <cstdint>
+#include <vector>
 #include <queue>
 
 #include "command.h"
@@ -252,6 +253,13 @@ public:
     void stop_send();
 
     /**
+     * @brief Add a command to the end of the queue.
+     *
+     * @param [in] cmd - Command object.
+     */
+    int push_command(Command *cmd);
+
+    /**
      * @brief The number of bytes available to receive().
      */
     inline size_t rx_available() const
@@ -434,13 +442,6 @@ private:
     void free_pending();
 
     /**
-     * @brief Add a command to the end of the queue.
-     *
-     * @param [in] cmd - Command object.
-     */
-    int push_command(Command *cmd);
-
-    /**
      * @brief Send a polling message based on the modem's state.
      */
     int poll_modem();
@@ -591,6 +592,9 @@ private:
 
     /** Most recent command awaiting response. */
     Command *pending = nullptr;
+
+    /** Response to the most recent command. */
+    std::vector<uint8_t> response;
 
     /** Time the pending command will expire. */
     uint32_t command_timer = 0;

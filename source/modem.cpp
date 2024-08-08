@@ -428,6 +428,10 @@ void Modem::free_pending()
         return;
     }
 
+    // Resolve and free the pending Command
+    pending->resolve(response.data(), response.size());
+    response.clear();
+
     delete pending;
     pending = nullptr;
 }
@@ -1018,6 +1022,13 @@ void Modem::parse_callback(uint8_t *start, size_t size, void *user)
 #if (NOVAGSM_DEBUG >= NOVAGSM_DEBUG_TRACE)
     print_buffer(start, size);
 #endif
+
+    // Expand the vector to fit the new data.
+    const size_t end = ctx->response.size();
+    ctx->response.resize(end + size);
+
+    // Append the new data
+    memcpy(ctx->response.data() + end, start, size);
 
     // Discard echo
     if (size >= 2 && memcmp(start, "AT", 2) == 0) {

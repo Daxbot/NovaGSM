@@ -33,6 +33,13 @@ Command::Command(uint32_t timeout, const char *data) :
     payload.push_back('\r');
 }
 
+void Command::set_callback(
+        void (*func)(const uint8_t *data, size_t size, void *user), void *user)
+{
+    resolve_cb = func;
+    resolve_cb_user = user;
+}
+
 void Command::add(const void *data, size_t size)
 {
     if (payload.size() == 3) {
@@ -64,6 +71,12 @@ void Command::append(const void *data, size_t size)
 
     // Append the new data
     memcpy(payload.data() + end, data, size);
+}
+
+void Command::resolve(const uint8_t *data, size_t size)
+{
+    if(resolve_cb)
+        resolve_cb(data, size, resolve_cb_user);
 }
 
 } // namespace gsm

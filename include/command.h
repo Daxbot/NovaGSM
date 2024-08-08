@@ -37,6 +37,16 @@ public:
     Command(uint32_t timeout, std::vector<uint8_t> &data);
 
     /**
+     * @brief Set a function to be called when a response is received.
+     *
+     * @param [in] func - callback function.
+     * @param [in] user - user data passed to func.
+     */
+    void set_callback(
+            void (*func)(const uint8_t *data, size_t size, void *user),
+            void *user = nullptr);
+
+    /**
      * @brief Add a command.
      *
      * @param [in] data - command to add.
@@ -58,6 +68,14 @@ public:
      * @param [in] size - buffer size.
      */
     void append(const void *data, size_t size);
+
+    /**
+     * @brief Invoke the resolve callback.
+     *
+     * @param [in] data - response data.
+     * @param [in] size - response size.
+     */
+    void resolve(const uint8_t *data, size_t size);
 
     /**
      * @brief Return the data pointer.
@@ -86,6 +104,12 @@ public:
 private:
     uint32_t timeout_ms; /**< Response timeout (ms). */
     std::vector<uint8_t> payload; /**< Command payload. */
+
+    /** Function to call on command resolution. */
+    void (*resolve_cb)(const uint8_t *data, size_t size, void *user) = nullptr;
+
+    /** Private data for resolve callback. */
+    void *resolve_cb_user = nullptr;
 };
 
 } // namespace gsm
