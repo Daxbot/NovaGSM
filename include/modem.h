@@ -14,6 +14,17 @@
 #include "command.h"
 #include "parser.h"
 
+/**@{*/
+/** Allows user to specify queue size with -DNOVAGSM_QUEUE_SIZE. */
+#ifndef NOVAGSM_QUEUE_SIZE
+#define NOVAGSM_QUEUE_SIZE 10
+#endif
+/**@}*/
+
+#if NOVAGSM_QUEUE_SIZE < 3
+#warning NOVAGSM_QUEUE_SIZE must be at least 3
+#endif
+
 /** Handles buffered communication through a GSM/GPRS modem. */
 namespace gsm {
 
@@ -26,6 +37,13 @@ static_assert(kBufferSize > 64);
  * protocol overhead.
  */
 constexpr size_t kSocketMax = (kBufferSize - 64);
+
+/**
+ * @brief Maximum number of queued AT commands.
+ *
+ * This can be set with -DNOVAGSM_QUEUE_SIZE (default 10).
+ */
+constexpr size_t kQueueSize = (NOVAGSM_QUEUE_SIZE);
 
 /**
  * @brief Defines resources and callbacks used by the driver.

@@ -225,6 +225,10 @@ int Modem::authenticate(const char *apn, const char *user, const char *pwd)
         break;
     }
 
+    // Requires two commands
+    if(cmd_buffer.size() >= kQueueSize - 2)
+        return -ENOBUFS;
+
     Command *cmd = new Command(65000);
     if (cmd == nullptr)
         return -ENOMEM;
@@ -435,6 +439,9 @@ int Modem::push_command(Command *cmd)
 
     if (cmd->size() >= kBufferSize)
         return -EMSGSIZE;
+
+    if (cmd_buffer.size() >= kQueueSize)
+        return -ENOBUFS;
 
     cmd_buffer.push(cmd);
     return 0;
