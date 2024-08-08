@@ -254,7 +254,7 @@ public:
     /**
      * @brief The number of bytes available to receive().
      */
-    inline int rx_available() const
+    inline size_t rx_available() const
     {
         return modem_rx_available;
     }
@@ -265,7 +265,7 @@ public:
      * Buffers larger than this will be broken up and sent over
      * multiple transfers.
      */
-    inline int tx_available() const
+    inline size_t tx_available() const
     {
         return modem_tx_available;
     }
@@ -553,8 +553,8 @@ private:
     /** User private data for error callback. */
     void *error_cb_user = nullptr;
 
-    /** Receive buffer. */
-    uint8_t buffer[kBufferSize];
+    /** Response buffer. */
+    uint8_t resp_buffer[kBufferSize];
 
     /** Modem functional state reported by AT+CFUN? */
     uint8_t modem_cfun = 0;
@@ -586,7 +586,7 @@ private:
     /** The modem is sending data. */
     bool ciprxget_flag = false;
 
-    /** Command queue. */
+    /** Internal command queue. */
     std::queue<Command*> cmd_buffer;
 
     /** Most recent command awaiting response. */

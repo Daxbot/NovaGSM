@@ -9,7 +9,7 @@
 #define NOVAGSM_PARSER_H_
 
 /**@{*/
-/** Allows user to specify buffer size with -DGSM_BUFFER_SIZE. */
+/** Allows user to specify buffer size with -DNOVAGSM_BUFFER_SIZE. */
 #ifndef NOVAGSM_BUFFER_SIZE
 #define NOVAGSM_BUFFER_SIZE 556
 #endif

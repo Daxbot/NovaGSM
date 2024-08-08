@@ -31,8 +31,8 @@ void Parser::load(const uint8_t *data, size_t size)
             int result = try_parse(buffer + tail, count);
             if (result > 0) {
                 // Successful parse
-                tail += result;
-                count -= result;
+                tail += static_cast<size_t>(result);
+                count -= static_cast<size_t>(result);
             }
             else if (result == -EINVAL) {
                 // Invalid packet
@@ -72,13 +72,13 @@ int Parser::try_parse(uint8_t *data, size_t size)
         }
     }
 
-    const size_t length = (end - data) + 1;
+    const size_t length = static_cast<size_t>(end - data) + 1;
     if (length < 4)
         return -EINVAL;
 
     emit_data(data, length);
 
-    return length;
+    return static_cast<int>(length);
 }
 
 } // namespace gsm

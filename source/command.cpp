@@ -13,13 +13,13 @@
 
 namespace gsm {
 
-Command::Command(uint32_t timeout, std::vector<uint8_t> &payload) :
-        timeout_ms(timeout), payload(payload)
+Command::Command(uint32_t timeout, std::vector<uint8_t> &data) :
+        timeout_ms(timeout), payload(data)
 {
 }
 
 Command::Command(uint32_t timeout, const char *data) :
-        timeout_ms(timeout)
+        timeout_ms(timeout), payload(0)
 {
     const size_t size = strlen(data);
     payload.reserve(size + 3);

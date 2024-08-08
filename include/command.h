@@ -32,9 +32,9 @@ public:
      * @brief Constructor.
      *
      * @param [in] timeout - maximum time to wait for a response (ms).
-     * @param [in] payload - command payload buffer.
+     * @param [in] data - command payload buffer.
      */
-    Command(uint32_t timeout, std::vector<uint8_t> &payload);
+    Command(uint32_t timeout, std::vector<uint8_t> &data);
 
     /**
      * @brief Add a command.

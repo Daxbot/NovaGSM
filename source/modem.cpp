@@ -71,7 +71,7 @@ static void print_buffer(const uint8_t *data, size_t size)
 #endif
 
 Modem::Modem(context_t &context) :
-        ctx(context)
+        ctx(context), cmd_buffer(), parser()
 {
     parser.set_parse_callback(parse_callback, this);
 }
@@ -120,9 +120,9 @@ void Modem::process()
 
     if (pending) {
         // Command pending - wait for response
-        int count = read(buffer, kBufferSize);
+        int count = read(resp_buffer, kBufferSize);
         if (count > 0) {
-            parser.load(buffer, count);
+            parser.load(resp_buffer, static_cast<size_t>(count));
         }
         else if ((int32_t) (millis() - command_timer) > 0) {
             handle_timeout();
@@ -265,7 +265,7 @@ int Modem::authenticate(const char *apn, const char *user, const char *pwd)
     if (size < 0)
         return size;
 
-    cmd->add(buffer, size);
+    cmd->add(buffer, static_cast<size_t>(size));
 
     int result = push_command(cmd);
     if (result) {
@@ -328,7 +328,7 @@ int Modem::connect(const char *host, unsigned int port)
         return size;
 
     // AT+CIPSTART=[mode],[host],[port] - start a new connection
-    cmd->add(buffer, size);
+    cmd->add(buffer, static_cast<size_t>(size));
 
     int result = push_command(cmd);
     if (result) {
@@ -511,8 +511,14 @@ int Modem::poll_modem()
 
 int Modem::poll_socket()
 {
-    const int rx_requested = (rx_buffer) ? (rx_size - rx_index) : 0;
-    const int tx_requested = (tx_buffer) ? (tx_size - tx_index) : 0;
+    if(rx_index > rx_size)
+        rx_index = rx_size;
+
+    if(tx_index > tx_size)
+        tx_index = tx_size;
+
+    const size_t rx_requested = (rx_buffer) ? (rx_size - rx_index) : 0;
+    const size_t tx_requested = (tx_buffer) ? (tx_size - tx_index) : 0;
 
     if (rx_requested && modem_rx_available) {
         int result = socket_receive(rx_requested);
@@ -567,7 +573,7 @@ int Modem::socket_receive(size_t size)
         return len;
 
     // AT+CIPRXGET=2,[size] - read 'size' bytes from the socket
-    cmd->add(buffer, len);
+    cmd->add(buffer, static_cast<size_t>(len));
 
     int result = push_command(cmd);
     if (result) {
@@ -575,8 +581,8 @@ int Modem::socket_receive(size_t size)
         return result;
     }
 
-    LOG_VERBOSE("RTR %d bytes (%d)\r\n", size, modem_rx_available);
-    return size;
+    LOG_VERBOSE("RTR %u bytes (%u)\r\n", size, modem_rx_available);
+    return static_cast<int>(size);
 }
 
 int Modem::socket_send(const uint8_t *data, size_t size)
@@ -596,7 +602,7 @@ int Modem::socket_send(const uint8_t *data, size_t size)
             return len;
 
         // AT+CIPSEND=[size] - indicate that data is about to be sent
-        cmd->add(buffer, len);
+        cmd->add(buffer, static_cast<size_t>(len));
 
         int result = push_command(cmd);
         if (result) {
@@ -619,8 +625,8 @@ int Modem::socket_send(const uint8_t *data, size_t size)
         }
     }
 
-    LOG_VERBOSE("RTS %d bytes (%d)\r\n", size, (tx_size - tx_index));
-    return size;
+    LOG_VERBOSE("RTS %u bytes (%d)\r\n", size, (tx_size - tx_index));
+    return static_cast<int>(size);
 }
 
 void Modem::handle_timeout()
@@ -670,7 +676,7 @@ bool Modem::parse_urc(uint8_t *start, size_t size)
         // │           └ start + 12
         // └ start
 
-        const int error = strtoul(
+        const int error = strtol(
                 reinterpret_cast<char*>(start + 12), nullptr, 10);
 
         LOG_ERROR("+CME ERROR: %d\r\n", error);
