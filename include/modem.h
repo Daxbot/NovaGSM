@@ -149,18 +149,6 @@ public:
     int reset();
 
     /**
-     * @brief Configure the GPRS context.
-     *
-     * Must be in State::ready, transitions to State::registered.
-     *
-     * @param [in] apn - access point name.
-     * @param [in] mode - CNMP mode (default LTE)
-     * @return -EINVAL if 'apn' is null or larger than 63 bytes.
-     * @return -ENODEV if the device is not responsive.
-     */
-    int configure(const char *apn, uint8_t mode = 38);
-
-    /**
      * @brief Connect to GPRS.
      *
      * Must be in State::registered, transitions to State::online.
