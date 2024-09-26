@@ -199,6 +199,50 @@ int Modem::reset()
     return 0;
 }
 
+int Modem::configure(const char *apn, uint8_t mode)
+{
+    if (apn == nullptr)
+        return -EINVAL;
+
+    if (status() == State::reset)
+        return -ENODEV;
+
+    Command *cmd = new Command(5000);
+    if (cmd == nullptr)
+        return -ENOMEM;
+
+    char buffer[64];
+    int size = 0;
+
+    // AT+CMEE=1 - enable numeric error codes
+    cmd->add("+CMEE=1");
+
+    // AT+CNMP=[mode] - preferred mode selection
+    size = snprintf(buffer, sizeof(buffer), "+CNMP=%d", mode);
+    if (size < 0)
+        return size;
+
+    cmd->add(buffer, size);
+
+    // AT+CGDCONT=1,"IP",[apn] - Define PDP context
+    size = snprintf(buffer, sizeof(buffer),
+            "+CGDCONT=1,\"IP\",\"%s\"", apn);
+
+    if (size < 0)
+        return size;
+
+    cmd->add(buffer, size);
+
+    int result = push_command(cmd);
+    if (result) {
+        delete cmd;
+        return result;
+    }
+
+    set_state(State::searching);
+    return 0;
+}
+
 int Modem::authenticate(const char *apn, const char *user, const char *pwd)
 {
     if (apn == nullptr)
@@ -698,7 +742,7 @@ bool Modem::parse_urc(uint8_t *start, size_t size)
 
         if (size >= 6 && memcmp(start, "READY\r", 6) == 0) {
             if (status() < State::searching)
-                set_state(State::searching);
+                set_state(State::ready);
         }
         else if (size >= 13 && memcmp(start, "NOT INSERTED\r", 13) == 0) {
             LOG_ERROR("SIM card is not inserted\r\n");
